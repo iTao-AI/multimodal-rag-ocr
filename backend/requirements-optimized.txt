@@ -1,48 +1,23 @@
-# Multimodal RAG 优化版依赖
-# 2026-03-11
+# 性能优化依赖
+# 监控和指标
+prometheus-client>=0.19.0
 
-# ========== 核心框架 ==========
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
+# Redis 缓存
+redis>=5.0.0
 
-# ========== 数据库 ==========
-pymilvus==2.4.0
-sqlalchemy==2.0.25
-alembic==1.13.1
+# 压力测试
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+locust>=2.0.0
 
-# ========== AI/ML ==========
-langchain==0.1.0
-langchain-community==0.0.10
-dashscope==1.14.0
-pymupdf4llm==0.0.8
+# 性能分析
+py-spy>=0.3.0
+memory-profiler>=0.60.0
 
-# ========== 性能优化 ==========
-redis==5.0.1
-aioredis==2.0.1
-slowapi==0.1.9  # 请求限流
+# HTTP 客户端优化
+aiohttp>=3.9.0
+httpx>=0.25.0
 
-# ========== 安全 ==========
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-cryptography==42.0.0
-python-dotenv==1.0.0
-
-# ========== 日志 ==========
-loguru==0.7.2
-python-json-logger==2.0.7
-
-# ========== 监控 ==========
-prometheus-client==0.19.0
-psutil==5.9.7
-
-# ========== 开发工具 ==========
-pytest==8.0.0
-pytest-asyncio==0.23.0
-black==24.1.0
-ruff==0.1.14
-mypy==1.8.0
-
-# ========== 部署 ==========
-gunicorn==21.2.0
-docker==7.0.0
+# 连接池
+uvicorn[standard]>=0.24.0
+gunicorn>=21.0.0
