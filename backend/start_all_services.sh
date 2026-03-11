@@ -25,8 +25,8 @@ echo -e "${BLUE}🚀 启动多模态RAG系统所有服务${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
 # 检查并激活Conda虚拟环境
-if [ -f "/root/anaconda3/envs/vlm_rag/bin/python" ]; then
-    PYTHON_CMD="/root/anaconda3/envs/vlm_rag/bin/python"
+if [ -f "$HOME/miniconda3/envs/vlm_rag/bin/python" ]; then
+    PYTHON_CMD="$HOME/miniconda3/envs/vlm_rag/bin/python"
     echo -e "${GREEN}✓ 使用Conda虚拟环境: vlm_rag${NC}"
 elif command -v python3 &> /dev/null; then
     PYTHON_CMD="python3"

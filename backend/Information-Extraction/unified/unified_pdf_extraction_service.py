@@ -37,12 +37,12 @@ load_dotenv(dotenv_path=env_path, override=True)
 # 从环境变量读取配置，如果没有则使用默认值
 UPLOAD_BASE_DIR = Path(os.getenv(
     "UPLOAD_BASE_DIR",
-    "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/uploads"
+    "/Users/mac/projects/demo/Multimodal_RAG/backend/uploads"
 ))
 
 EXTRACTION_RESULTS_DIR = Path(os.getenv(
     "EXTRACTION_RESULTS_DIR",
-    "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/extraction_results"
+    "/Users/mac/projects/demo/Multimodal_RAG/backend/extraction_results"
 ))
 
 # 文件大小限制（MB）
@@ -1248,7 +1248,7 @@ def run_debug_mode(pdf_path: str, mode: str = "fast", **kwargs):
 if __name__ == "__main__":
     is_debug = False  # 如果要本地运行测试，将 False 改为 True
     if is_debug:
-        test_file_path  ="/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/data/阿里开发手册-泰山版.pdf" # 这里替换成自己的
+        test_file_path  ="/Users/mac/projects/demo/Multimodal_RAG/backend/data/阿里开发手册-泰山版.pdf" # 这里替换成自己的
 
         run_debug_mode(
             test_file_path, 

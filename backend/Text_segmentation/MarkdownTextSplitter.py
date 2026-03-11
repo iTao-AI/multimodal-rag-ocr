@@ -274,7 +274,7 @@ def add_cross_page_bridges(chunks: List[Dict], bridge_span: int = 150) -> List[D
 
 # ========== 5) DEMO ==========
 if __name__ == "__main__":
-    md_path = "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/Information-Extraction/01_rule_based/PyMuPDF4LLM/output/阿里开发手册-泰山版/阿里开发手册-泰山版.md"
+    md_path = "/Users/mac/projects/demo/Multimodal_RAG/backend/Information-Extraction/01_rule_based/PyMuPDF4LLM/output/阿里开发手册-泰山版/阿里开发手册-泰山版.md"
     with open(md_path, "r", encoding="utf-8") as f:
         md_text = f.read()
     data = chunk_markdown_only_with_cross_page(

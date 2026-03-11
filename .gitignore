@@ -1,5 +1,21 @@
 # Node
 node_modules/
+
+# Milvus Data (大型二进制文件)
+backend/Database/milvus_server/data/
+backend/Database/milvus_server/rdb_data/
+backend/Database/milvus_server/rdb_data_meta_kv/
+
+# MinIO Data
+backend/Database/milvus_server/data/volumes/minio/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
 dist/
 dist-ssr/
 *.local
