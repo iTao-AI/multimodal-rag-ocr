@@ -1043,8 +1043,8 @@ async def get_document_details(file_id: str):
     """获取文档的详细信息，包括PDF、Markdown、chunks等"""
     try:
         # 定义基础路径
-        base_upload_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/uploads")
-        base_extraction_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/extraction_results")
+        base_upload_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/uploads")
+        base_extraction_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/extraction_results")
 
         # 查找文件
         extraction_dir = base_extraction_dir / file_id
@@ -1111,8 +1111,8 @@ async def get_document_details(file_id: str):
 async def get_document_pdf(file_id: str):
     """直接返回PDF文件，Content-Disposition设置为inline以便浏览器内嵌显示"""
     try:
-        base_upload_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/uploads")
-        base_extraction_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/extraction_results")
+        base_upload_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/uploads")
+        base_extraction_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/extraction_results")
 
         # 读取metadata获取原始文件名
         extraction_dir = base_extraction_dir / file_id
@@ -1162,7 +1162,7 @@ async def get_document_pdf(file_id: str):
 async def get_document_image(file_id: str, image_name: str):
     """获取文档提取的图片"""
     try:
-        base_extraction_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/extraction_results")
+        base_extraction_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/extraction_results")
 
         # 图片路径
         image_path = base_extraction_dir / file_id / "images" / image_name
