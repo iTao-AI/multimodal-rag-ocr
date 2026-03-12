@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -8,6 +9,7 @@ from database.sql_db import init_db
 from loguru import logger
 import uvicorn
 import sys
+import uuid
 from datetime import datetime
 
 # 配置日志
@@ -50,6 +52,67 @@ app.add_middleware(
 # 添加限流处理
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ============ 全局异常处理 ============
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """全局异常处理器 - 统一错误响应格式"""
+    request_id = str(uuid.uuid4())
+    
+    # 记录详细错误日志
+    logger.error(
+        f"全局异常 [request_id={request_id}]: {exc}",
+        exc_info=True
+    )
+    
+    # 返回统一格式的错误响应
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "服务器内部错误",
+                "request_id": request_id,
+                "details": None
+            }
+        }
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """HTTP 异常处理器"""
+    request_id = str(uuid.uuid4())
+    
+    logger.warning(
+        f"HTTP 异常 [request_id={request_id}]: {exc.detail}",
+        status_code=exc.status_code
+    )
+    
+    # 映射 HTTP 状态码到错误码
+    error_code_map = {
+        400: "INVALID_REQUEST",
+        401: "UNAUTHORIZED",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        429: "RATE_LIMIT_EXCEEDED",
+        500: "INTERNAL_ERROR",
+    }
+    
+    error_code = error_code_map.get(exc.status_code, "INTERNAL_ERROR")
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": error_code,
+                "message": exc.detail,
+                "request_id": request_id,
+                "details": None
+            }
+        }
+    )
 
 # 注册路由
 app.include_router(router, prefix="/api/v1")
