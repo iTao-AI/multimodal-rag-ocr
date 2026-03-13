@@ -24,9 +24,11 @@ import fitz # type: ignore
 from PIL import Image # type: ignore
 from pdf2image import convert_from_bytes # type: ignore
 import uvicorn # type: ignore
-import httpx # type: ignore
+# 使用全局 HTTP 连接池
+# import httpx # type: ignore
 from llm_extraction import PAGES_PER_REQUEST, CONCURRENT_REQUESTS # type: ignore
 from dotenv import load_dotenv # type: ignore
+from utils.connection_pool import get_http_client  # HTTP 连接池
 
 # 加载 backend/.env 文件
 env_path = Path(__file__).parent.parent.parent.parent / '.env'

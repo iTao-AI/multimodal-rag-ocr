@@ -89,3 +89,5 @@ pids/
 
 # Output
 backend/output/
+backend/Database/milvus_server/data/
+backend/Database/milvus_server/logs/

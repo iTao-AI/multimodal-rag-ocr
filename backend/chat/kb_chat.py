@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
+from cache.redis_cache import cache  # Redis 缓存
 
 # 服务配置
 SERVICE_PORT = int(os.getenv("CHAT_SERVICE_PORT", "8501"))
@@ -858,6 +859,14 @@ async def chat(request: ChatRequest):
             status_code=500,
             detail=f"对话失败: {str(e)}"
         )
+
+# ============ 缓存统计端点 ============
+
+@app.get("/cache/stats")
+async def cache_stats():
+    """获取缓存统计信息"""
+    return cache.stats()
+
 
 @app.get("/health")
 async def health_check():

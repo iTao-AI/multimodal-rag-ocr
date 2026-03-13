@@ -15,7 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility
+# 添加项目根目录到 Python 路径
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from dotenv import load_dotenv
+from cache.redis_cache import cache  # Redis 缓存
 
 # 加载 backend/.env 文件
 env_path = Path(__file__).parent.parent.parent / '.env'
@@ -941,6 +945,16 @@ async def upload_json_file(request: UploadKBRequest):
 async def search_documents(request: SearchRequest):
     """根据问题搜索相似文档"""
     try:
+        # 生成缓存 key
+        cache_key = f"search:{request.collection_name}:{request.query_text}:{request.top_k}"
+        
+        # 尝试从缓存获取
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            print(f"[缓存命中] {cache_key}")
+            return cached_result
+        
+        # 执行检索
         results = milvus_service.search_by_text(
             collection_name=request.collection_name,
             query_text=request.query_text,
@@ -948,12 +962,17 @@ async def search_documents(request: SearchRequest):
             filter_expr=request.filter_expr
         )
         
-        return {
+        # 缓存结果（30 分钟）
+        result_data = {
             "status": "success",
             "query": request.query_text,
             "results": results,
             "total": len(results)
         }
+        cache.set(cache_key, result_data, ttl=1800)
+        print(f"[缓存写入] {cache_key}")
+        
+        return result_data
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1191,6 +1210,29 @@ async def get_document_image(file_id: str, image_name: str):
         print(f"获取图片失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
 
+
+# ============ 连接池监控端点 ============
+
+@app.get("/metrics/connections")
+async def connection_metrics():
+    """获取连接池监控指标"""
+    from utils.connection_pool import get_pool_stats
+    return get_pool_stats()
+
+
+# ============ 缓存统计端点 ============
+
+@app.get("/cache/stats")
+async def cache_stats():
+    """获取缓存统计信息"""
+    return cache.stats()
+
+@app.delete("/cache/clear")
+async def clear_cache(pattern: str = "search:*"):
+    """清除缓存（支持 pattern 匹配）"""
+    cache.clear_pattern(pattern)
+    return {"message": f"缓存已清除：{pattern}"}
+
 if __name__ == "__main__":
     host = os.getenv("SERVER_HOST", "0.0.0.0")
     port = int(os.getenv("SERVER_PORT", "8000"))
@@ -1203,3 +1245,20 @@ if __name__ == "__main__":
     print("="*60 + "\n")
     
     uvicorn.run(app, host=host, port=port)
+
+# ============ 连接池管理 ============
+
+from backend.utils.connection_pool import milvus_pool, http_pool
+
+@app.on_event("startup")
+async def startup_event():
+    """启动时初始化连接池"""
+    milvus_pool.initialize()
+    print("✅ 连接池初始化完成")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """关闭时清理连接池"""
+    import asyncio
+    asyncio.create_task(http_pool.close())
+    print("✅ 连接池已关闭")
