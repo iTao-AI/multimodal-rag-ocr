@@ -16,19 +16,41 @@ router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 chat_service = ChatService()
 
 
-@router.post("", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse, summary="RAG 对话", tags=["Chat"])
 async def chat(request: ChatRequest) -> ChatResponse:
     """
     RAG 对话接口
     
-    Args:
-        request: 对话请求
+    基于检索增强生成 (RAG) 的智能对话接口：
     
-    Returns:
-        ChatResponse: 对话响应
+    1. **检索**: 从 Milvus 向量数据库检索相关文档
+    2. **重排序**: 可选的重排序提升检索质量
+    3. **生成**: 使用 LLM 生成回答
+    4. **引用**: 返回答案来源文档
     
-    Examples:
-        >>> response = await chat(ChatRequest(query="你好", collection_name="documents", ...))
+    ### 请求参数
+    
+    - **query**: 用户问题
+    - **collection_name**: Milvus 集合名称
+    - **top_k**: 召回文档数量 (默认 10)
+    - **use_reranker**: 是否使用重排序 (默认 False)
+    - **stream**: 是否流式输出 (默认 True)
+    
+    ### 响应
+    
+    - **answer**: AI 生成的回答
+    - **sources**: 来源文档列表 (包含分数)
+    - **metadata**: 元数据 (来源数量、上下文长度等)
+    
+    ### 示例
+    
+    ```python
+    response = await chat(ChatRequest(
+        query="如何重置密码？",
+        collection_name="documents",
+        top_k=5
+    ))
+    ```
     """
     result = await chat_service.chat(request)
     
@@ -38,16 +60,40 @@ async def chat(request: ChatRequest) -> ChatResponse:
     return result
 
 
-@router.post("/stream")
+@router.post("/stream", summary="流式对话", tags=["Chat"])
 async def chat_stream(request: ChatRequest):
     """
-    流式对话接口
+    流式对话接口 (Server-Sent Events)
     
-    Args:
-        request: 对话请求
+    实时流式输出对话内容，适用于需要即时反馈的场景。
     
-    Returns:
-        StreamingResponse: 流式响应
+    ### 响应格式
+    
+    ```
+    data: {"chunk": "你", "is_last": false}
+    data: {"chunk": "好", "is_last": false}
+    data: {"chunk": "！", "is_last": true}
+    ```
+    
+    ### 使用示例
+    
+    ```javascript
+    const response = await fetch('/api/v1/chat/stream', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({query: "你好", collection_name: "documents"})
+    });
+    
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        console.log(chunk);
+    }
+    ```
     """
     from fastapi.responses import StreamingResponse
     
@@ -58,7 +104,24 @@ async def chat_stream(request: ChatRequest):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
-@router.get("/health")
+@router.get("/health", summary="健康检查", tags=["Health"])
 async def health_check():
-    """健康检查"""
-    return {"status": "healthy", "service": "chat"}
+    """
+    健康检查接口
+    
+    返回服务当前状态，用于监控和负载均衡。
+    
+    ### 响应
+    
+    - **status**: 服务状态 (healthy/unhealthy)
+    - **service**: 服务名称
+    - **timestamp**: 检查时间戳
+    """
+    from datetime import datetime
+    
+    return {
+        "status": "healthy",
+        "service": "chat",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    }

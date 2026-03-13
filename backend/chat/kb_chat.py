@@ -18,8 +18,29 @@ SERVICE_HOST = os.getenv("CHAT_SERVICE_HOST", "0.0.0.0")
 # 创建 FastAPI 应用
 app = FastAPI(
     title="RAG Chat Service",
-    description="RAG 对话服务 - 支持向量召回、重排序、流式问答",
-    version="1.0.0"
+    description="""
+## RAG 对话服务
+
+多模态检索增强生成 (RAG) 对话服务，支持：
+
+- **向量检索**: 基于 Milvus 的语义检索
+- **关键词检索**: BM25 精确匹配
+- **混合检索**: 向量 + 关键词混合检索
+- **重排序**: 提升检索质量
+- **流式输出**: 实时对话体验
+- **来源引用**: 可追溯答案来源
+
+### 技术栈
+
+- **后端**: FastAPI + Python 3.10+
+- **向量数据库**: Milvus 2.6+
+- **大模型**: 阿里云百炼 (Qwen3-VL)
+- **缓存**: Redis 7.0+
+    """,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 # CORS 配置
