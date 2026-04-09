@@ -1,7 +1,9 @@
 node_modules/
 __pycache__/
 *.py[cod]
-minerU/
+minerU/MinerU_2_5_4/
+minerU/.vite/
+minerU/Dockerfile
 .vite/
 backend/mineru_visualizations/
 backend/Database/milvus_server/data/volumes/

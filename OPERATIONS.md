@@ -62,10 +62,37 @@ npm run dev
 - 前端配置: `frontend/.env`（从 `env.template` 复制）
 - 注意：`.env` 文件中的路径已适配本机项目目录
 
-### Docker 镜像
+### OCR 服务（V2.0，需 GPU 服务器）
 
-- **MinerU**: 需通过 Docker 构建（约 15GB），Dockerfile 在 `minerU/Dockerfile`
-- 构建命令: `cd minerU && docker build -t mineru-vllm:latest -f Dockerfile .`
+本项目支持三种 OCR 模式：MinerU、PaddleOCR-VL、DeepSeek-OCR。本地 Mac 无 NVIDIA GPU，需在 AutoDL/GPU 服务器上部署。
+
+#### AutoDL 接入方案
+
+1. **租用 AutoDL 实例**（推荐 RTX 4090 或 A100，24GB+ 显存）
+2. **在 AutoDL 上部署 MinerU**：
+   ```bash
+   # 在 AutoDL 实例中执行
+   wget https://gcore.jsdelivr.net/gh/opendatalab/MinerU@master/docker/china/Dockerfile
+   # 修改 Dockerfile 基础镜像
+   # FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.11.2
+   docker build -t mineru-vllm:2.5.4 -f Dockerfile .
+
+   # 下载 compose.yaml 并启动
+   wget https://gcore.jsdelivr.net/gh/opendatalab/MinerU@master/docker/compose.yaml
+   docker compose -f compose.yaml --profile vllm-server --profile api --profile gradio up -d
+   ```
+3. **修改本地 `.env` 中的远程地址**：
+   ```bash
+   # backend/.env 中的 MinerU API 地址改为 AutoDL 实例 IP
+   MINERU_API_URL=http://<AutoDL实例IP>:8001/file_parse
+   VLLM_SERVER_URL=http://<AutoDL实例IP>:30000
+   ```
+4. **本地前端会自动调用 V2.0 OCR 接口**，后端将请求转发到远程 GPU 服务器
+
+#### MinerU 本地目录
+
+- `minerU/` 保留为空目录结构，Dockerfile 可从项目仓库获取
+- 构建后的镜像约 50GB，不建议在本地 Mac 构建
 
 ### 依赖安装
 
@@ -83,6 +110,6 @@ npm install
 ### 注意事项
 
 1. **Milvus 必须手动启停**，禁止使用 `restart: always`，否则 etcd WAL 日志会无限增长
-2. **minerU 目录**（约 7GB）已加入 `.gitignore`，不提交到仓库
+2. **minerU 目录**已加入 `.gitignore`，不提交到仓库；本地 Mac 无 GPU 无法运行 OCR，需通过 AutoDL 接入
 3. **node_modules** 和数据库数据目录均已排除，避免推送大文件
 4. **Python 虚拟环境**: 使用 conda `vlm_rag`（Python 3.11），非系统 Python
