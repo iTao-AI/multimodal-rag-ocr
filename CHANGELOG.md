@@ -2,6 +2,52 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范。
 
+## [2.0.0] - 2026-04-09
+
+### ✨ 重大更新
+
+- **混合检索** - BM25 + 向量混合检索，检索精度显著提升
+  - `hybrid_search_service.py` - 新增混合搜索服务
+  - `search_enhanced.py` - 增强搜索端点
+- **查询重写** - 基于 Qwen 模型的查询改写服务 (`query_rewrite_service.py`)
+- **重排序** - Qwen3.5-Plus 重排序服务 (`rerank_service.py`)
+- **流式输出** - kb_chat.py 支持流式/非流式输出 (81 行 → 924 行)
+  - 异步处理、SSE 流式响应
+  - 支持自定义 LLM/Reranker 配置
+- **Redis 缓存** - 搜索结果缓存管理 (`cache_manager.py`)
+
+### 🔧 配置变更
+
+- 嵌入模型：`text-embedding-v4` → `text-embedding-v3`
+- 新增阿里云百炼全套配置 (embedding/rerank/hybrid search)
+- 新增混合检索权重配置 (BM25 0.3 + Vector 0.7)
+
+### 📦 依赖新增
+
+- `rank-bm25`、`jieba`（中文分词）、`scikit-learn`
+- `redis`（缓存）、`python-dotenv`（配置管理）
+- `fastapi` 锁定版本 0.119.0
+
+### 📚 文档
+
+- `IMPLEMENTATION_REPORT.md` - 实施报告
+- `backend/IMPLEMENTATION_VECTOR_SEARCH.md` - 向量检索优化实施文档
+- `backend/QUICKSTART.md` - 快速启动指南
+- `backend/knowledge-base-api/test_vector_search.py` - 向量搜索测试
+
+### 🗑️ 清理
+
+- 移除冗余备份文件、日志文件
+- 精简 `.gitignore`（去重）
+- 移除未使用的 monitoring 配置
+- 修复 CI 工作流配置
+
+### 🔌 合并
+
+- 合并 `iTao-AI/Multimodal_RAG` 仓库，整合向量检索优化功能
+
+---
+
 ## [1.0.0] - 2026-03-11
 
 ### ✨ 新增功能
