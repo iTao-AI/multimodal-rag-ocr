@@ -15,11 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility
-# 添加项目根目录到 Python 路径
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from dotenv import load_dotenv
-from cache.redis_cache import cache  # Redis 缓存
 
 # 加载 backend/.env 文件
 env_path = Path(__file__).parent.parent.parent / '.env'
@@ -410,9 +406,7 @@ class MilvusRAGService:
             
             data_section = json_data.get("data", {})
             chunks = data_section.get("chunks", [])
-            
-            print(f"开始解析文件: {filename}, 包含 {len(chunks)} 个chunks")
-            
+                        
             # 为每个chunk创建DocumentChunk
             for i, chunk in enumerate(chunks):
                 chunk_text = chunk.get("text", "")
@@ -444,7 +438,6 @@ class MilvusRAGService:
                 )
                 documents.append(doc)
             
-            print(f"成功解析 {len(documents)} 个有效chunks")
             return documents
             
         except Exception as e:
@@ -753,7 +746,7 @@ class MilvusRAGService:
             raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
     def get_collection_documents(self, collection_id: str) -> List[Dict[str, Any]]:
-        """获取知识库中的文档列表（按文件名去重）"""
+        """获取知识库中的文档列表（按文件名去重，支持 V1 和 V2）"""
         try:
             if not utility.has_collection(collection_id):
                 raise HTTPException(status_code=404, detail=f"知识库 {collection_id} 不存在")
@@ -774,9 +767,12 @@ class MilvusRAGService:
                     limit=16384
                 )
 
+                print(f"\n📊 查询知识库文档列表: {collection_id}")
+                print(f"  - 总记录数: {len(results)}")
+
                 # 按文件名分组统计
                 doc_stats = {}
-                for result in results:
+                for idx, result in enumerate(results):
                     filename = result.get("filename")
                     if not filename:
                         continue
@@ -789,17 +785,27 @@ class MilvusRAGService:
                         except:
                             metadata = {}
 
-                        # 从metadata中提取实际的file_id（用于文件系统路径）
-                        # metadata.file_id 是文件系统路径用的ID（如 file_20251016_d398cfa1）
-                        # result.file_id 是Milvus中的UUID
+                        # ✅ 关键：从 metadata 中提取文件系统的 file_id
+                        # V1: metadata.file_id (如 file_20251016_d398cfa1)
+                        # V2: metadata.file_id (UUID 格式，如 bdde5a1e-b522-4de5-9948-2e1d721a7292)
+                        # 如果 metadata 中没有，则使用 Milvus 的 file_id
                         actual_file_id = metadata.get("file_id", result.get("file_id"))
+                        
+                        # 打印前3个文档的 ID 信息
+                        if idx < 3:
+                            print(f"\n  文档 {idx+1}: {filename}")
+                            print(f"    - Milvus file_id: {result.get('file_id')}")
+                            print(f"    - Metadata file_id: {metadata.get('file_id')}")
+                            print(f"    - 实际使用 file_id: {actual_file_id}")
+                            print(f"    - API version: {metadata.get('api_version', 'v1')}")
 
                         doc_stats[filename] = {
                             "filename": filename,
-                            "file_id": actual_file_id,  # 使用metadata中的file_id
+                            "file_id": actual_file_id,  # ✅ 使用 metadata 中的 file_id
                             "chunks": 0,
                             "created_at": result.get("created_at"),
-                            "metadata": metadata
+                            "metadata": metadata,
+                            "api_version": metadata.get("api_version", "v1")  # ✅ 添加版本信息
                         }
 
                     doc_stats[filename]["chunks"] += 1
@@ -807,6 +813,8 @@ class MilvusRAGService:
                 # 转换为列表并排序（按创建时间倒序）
                 documents = list(doc_stats.values())
                 documents.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+                print(f"\n  ✓ 去重后文档数: {len(documents)}\n")
 
                 return documents
 
@@ -912,7 +920,7 @@ async def list_knowledge_bases():
 
 @app.post("/upload_json", response_model=UploadResponse)
 async def upload_json_file(request: UploadKBRequest):
-    """上传JSON文件到知识库"""
+    """上传JSON文件到知识库（V1 格式）"""
     try:
         # 解析JSON文件
         documents = milvus_service.parse_json_file(request.file_data)
@@ -932,7 +940,7 @@ async def upload_json_file(request: UploadKBRequest):
             filename=filename,
             file_id=documents[0].file_id if documents else str(uuid.uuid4()),
             status="success",
-            message=f"文件上传成功，处理了{len(documents)}个chunks",
+            message=f"文件上传成功（V1），处理了{len(documents)}个chunks",
             chunks_count=len(documents)
         )
         
@@ -941,20 +949,174 @@ async def upload_json_file(request: UploadKBRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/upload_json/v2")
+async def upload_json_file_v2(request: Dict[str, Any]):
+    """
+    上传 output.json 格式的数据到知识库（OCR 2.0）
+    
+    请求格式：
+    {
+      "collection_name": "kb_123",
+      "file_id": "原始file_id",  // 必须，用于前端查找文件
+      "output_json": {
+        "backend": "pipeline",
+        "version": "2.5.4",
+        "results": {
+          "文件名": {
+            "md_content": "...",
+            "chunks": [...],
+            "images": {...},
+            "page_images": [...]
+          }
+        }
+      },
+      "result_key": "文件名"  // 可选
+    }
+    
+    返回：存储结果
+    """
+    try:
+        
+        # 提取请求参数
+        collection_name = request.get("collection_name")
+        file_id_original = request.get("file_id")  # 原始 file_id
+        output_json = request.get("output_json", {})
+        result_key = request.get("result_key")
+        
+        if not collection_name:
+            raise HTTPException(status_code=400, detail="缺少 collection_name 参数")
+        
+        if not file_id_original:
+            raise HTTPException(status_code=400, detail="缺少 file_id 参数")
+        
+        print(f"📋 请求参数:")
+        print(f"  - Collection: {collection_name}")
+        print(f"  - File ID: {file_id_original}")
+        print(f"  - Result Key: {result_key or '(自动)'}")
+        
+        # 提取 results
+        results = output_json.get("results", {})
+        if not results:
+            print(f"❌ output_json 结构:")
+            print(f"  - Keys: {list(output_json.keys())}")
+            raise HTTPException(status_code=400, detail="output_json 中未找到 results 字段")
+        
+        # 获取 result_key
+        if not result_key or result_key not in results:
+            result_key = list(results.keys())[0]
+            print(f"ℹ️  使用第一个键作为 result_key: {result_key}")
+        
+        result_data = results[result_key]
+        
+        print(f"\n📦 输入数据信息:")
+        print(f"  - Backend: {output_json.get('backend', 'N/A')}")
+        print(f"  - Version: {output_json.get('version', 'N/A')}")
+        print(f"  - Result Key: {result_key}")
+        print(f"  - 包含字段: {list(result_data.keys())}")
+        print(f"  - 是否有 md_content: {'md_content' in result_data}")
+        print(f"  - 是否有 chunks: {'chunks' in result_data}")
+        print(f"  - 是否有 images: {'images' in result_data}")
+        print(f"  - 是否有 page_images: {'page_images' in result_data}")
+        
+        if 'md_content' in result_data:
+            print(f"  - md_content 长度: {len(result_data['md_content'])} 字符")
+        
+        # 提取 chunks
+        chunks = result_data.get("chunks", [])
+        if not chunks:
+            print(f"❌ 未找到 chunks 或 chunks 为空")
+            raise HTTPException(status_code=400, detail="未找到 chunks 字段或 chunks 为空")
+        
+        print(f"  - 总 chunks: {len(chunks)}")
+        
+        # 打印前3个 chunks 的结构
+        print(f"\n📝 前 3 个 chunks 结构:")
+        for i, chunk in enumerate(chunks[:3]):
+            print(f"  Chunk {i+1}:")
+            print(f"    - Keys: {list(chunk.keys())}")
+            print(f"    - 页码: {chunk.get('page_start')}-{chunk.get('page_end')}")
+            print(f"    - 文本长度: {chunk.get('text_length')}")
+            print(f"    - 文本预览: {chunk.get('text', '')[:50]}...")
+        
+        # 构建 DocumentChunk 列表
+        print(f"\n🔄 开始构建 DocumentChunk 列表...")
+        documents = []
+        filename = result_key + ".pdf"  # 恢复文件名
+        
+        for i, chunk in enumerate(chunks):
+            chunk_text = chunk.get("text", "")
+            if not chunk_text.strip():
+                print(f"  ⚠️  跳过空 chunk {i}")
+                continue
+            
+            # 构建 metadata（包含 V2 的额外字段 + 原始 file_id）
+            metadata = {
+                "file_id": file_id_original,  # 保存原始 file_id
+                "page_start": chunk.get("page_start", 1),
+                "page_end": chunk.get("page_end", 1),
+                "pages": chunk.get("pages", [1]),
+                "text_length": chunk.get("text_length", len(chunk_text)),
+                "continued": chunk.get("continued", False),
+                "cross_page_bridge": chunk.get("cross_page_bridge", False),
+                "is_table_like": chunk.get("is_table_like", False),
+                "chunk_index": i,
+                "headers": chunk.get("headers", {}),  # V2 特有
+                "extraction_method": output_json.get("backend", "unknown"),  # V2 特有
+                "version": output_json.get("version", "unknown"),  # V2 特有
+                "api_version": "v2"  # 标记为 V2 数据
+            }
+            
+            doc = DocumentChunk(
+                chunk_text=chunk_text,
+                filename=filename,
+                file_id=file_id_original,  # ✅ 使用原始 file_id
+                metadata=metadata
+            )
+            documents.append(doc)
+        
+        print(f"  ✓ 构建完成，有效 chunks: {len(documents)}")
+        
+        # 插入到 Milvus
+        print(f"\n🗄️  开始插入到 Milvus（Collection: {collection_name}）...")
+        file_ids = milvus_service.insert_documents(collection_name, documents)
+        
+        print("\n" + "="*80)
+        print("✅ OCR 2.0 数据存储完成")
+        print("="*80)
+        print(f"📊 存储统计:")
+        print(f"  - Collection: {collection_name}")
+        print(f"  - 文件名: {filename}")
+        print(f"  - 插入数量: {len(file_ids)}")
+        print(f"  - Backend: {output_json.get('backend')}")
+        print(f"  - Version: {output_json.get('version')}")
+        print("="*80 + "\n")
+        
+        return {
+            "status": "success",
+            "message": f"OCR 2.0 数据上传成功，处理了 {len(documents)} 个 chunks",
+            "collection_name": collection_name,
+            "filename": filename,
+            "chunks_count": len(documents),
+            "backend": output_json.get("backend"),
+            "version": output_json.get("version")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"\n" + "="*80)
+        print(f"❌ OCR 2.0 数据存储失败")
+        print("="*80)
+        print(f"错误: {e}")
+        import traceback
+        traceback.print_exc()
+        print("="*80 + "\n")
+        raise HTTPException(status_code=500, detail=f"OCR 2.0 数据存储失败: {str(e)}")
+
 @app.post("/search")
 async def search_documents(request: SearchRequest):
     """根据问题搜索相似文档"""
     try:
-        # 生成缓存 key
-        cache_key = f"search:{request.collection_name}:{request.query_text}:{request.top_k}"
-        
-        # 尝试从缓存获取
-        cached_result = cache.get(cache_key)
-        if cached_result:
-            print(f"[缓存命中] {cache_key}")
-            return cached_result
-        
-        # 执行检索
         results = milvus_service.search_by_text(
             collection_name=request.collection_name,
             query_text=request.query_text,
@@ -962,17 +1124,12 @@ async def search_documents(request: SearchRequest):
             filter_expr=request.filter_expr
         )
         
-        # 缓存结果（30 分钟）
-        result_data = {
+        return {
             "status": "success",
             "query": request.query_text,
             "results": results,
             "total": len(results)
         }
-        cache.set(cache_key, result_data, ttl=1800)
-        print(f"[缓存写入] {cache_key}")
-        
-        return result_data
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1059,66 +1216,175 @@ async def get_knowledge_base_documents(collection_id: str):
 
 @app.get("/document/{file_id}/details")
 async def get_document_details(file_id: str):
-    """获取文档的详细信息，包括PDF、Markdown、chunks等"""
+    """获取文档的详细信息，包括PDF、Markdown、chunks等（支持 V1 和 V2）"""
     try:
-        # 定义基础路径
-        base_upload_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/uploads")
-        base_extraction_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/extraction_results")
-
-        # 查找文件
-        extraction_dir = base_extraction_dir / file_id
-
+        print("\n" + "="*80)
+        print(f"📄 获取文档详情请求 - /document/{file_id}/details")
+        print("="*80)
+        print(f"  - File ID: {file_id}")
+        
+        # 定义基础路径（V1 和 V2 现在都使用同一个路径，从环境变量读取）
+        import os
+        upload_base = Path(os.getenv(
+            "UPLOAD_BASE_DIR",
+            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/uploads"
+        ))
+        extraction_base = Path(os.getenv(
+            "EXTRACTION_RESULTS_DIR",
+            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/extraction_results"
+        ))
+        
+        base_dirs_v1 = {
+            'upload': upload_base,
+            'extraction': extraction_base
+        }
+        base_dirs_v2 = {
+            'upload': upload_base,
+            'extraction': extraction_base
+        }
+        
+        # 查找文件目录
+        print(f"\n🔍 查找文件...")
+        
+        extraction_dir = extraction_base / file_id
+        base_upload_dir = upload_base
+        
         if not extraction_dir.exists():
+            print(f"  ❌ 目录不存在: {extraction_dir}")
             raise HTTPException(status_code=404, detail=f"文档 {file_id} 不存在")
-
-        # 读取metadata.json
-        metadata_path = extraction_dir / "metadata.json"
-        chunks_path = extraction_dir / "chunks.json"
-
-        if not metadata_path.exists():
+        
+        print(f"  ✓ 找到目录: {extraction_dir}")
+        
+        # 通过文件特征判断版本（V1 vs V2）
+        # V2特征：有 *_extraction.md 或 *_chunked_output.json 文件
+        # V1特征：有 chunks.json 和 *.md (不含_extraction后缀)
+        has_v2_extraction = len(list(extraction_dir.glob("*_extraction.md"))) > 0
+        has_v2_chunked = len(list(extraction_dir.glob("*_chunked_output.json"))) > 0
+        has_v1_chunks = (extraction_dir / "chunks.json").exists()
+        
+        if has_v2_extraction or has_v2_chunked:
+            api_version = "v2"
+            print(f"  ✓ 识别为 V2 格式 (有 *_extraction.md 或 *_chunked_output.json)")
+        elif has_v1_chunks:
+            api_version = "v1"
+            print(f"  ✓ 识别为 V1 格式 (有 chunks.json)")
+        else:
+            # 默认为V1（兼容老数据）
+            api_version = "v1"
+            print(f"  ⚠️  无法明确识别版本，默认使用 V1")
+        
+        print(f"  - 使用版本: {api_version}")
+        
+        # 读取metadata.json（V1 和 V2 通用）或者 V2 的 metadata 文件
+        metadata_files = list(extraction_dir.glob("*_metadata.json")) + [extraction_dir / "metadata.json"]
+        metadata_path = None
+        for mf in metadata_files:
+            if mf.exists():
+                metadata_path = mf
+                break
+        
+        if not metadata_path:
+            print(f"  ❌ 未找到 metadata 文件")
             raise HTTPException(status_code=404, detail="元数据文件不存在")
 
+        print(f"  ✓ 找到 metadata: {metadata_path.name}")
+        
         with open(metadata_path, 'r', encoding='utf-8') as f:
             metadata = json.load(f)
 
-        # 读取chunks
+        # 读取chunks（V1 和 V2 格式不同）
+        print(f"\n📦 读取 chunks...")
         chunks_data = []
-        if chunks_path.exists():
-            with open(chunks_path, 'r', encoding='utf-8') as f:
-                full_chunks = json.load(f)
-                # 只提取chunks数组部分
-                if isinstance(full_chunks, dict) and 'chunks' in full_chunks:
-                    chunks_data = full_chunks.get('chunks', [])
-                else:
-                    chunks_data = full_chunks
+        
+        if api_version == "v2":
+            # V2: 从 chunked_output.json 中读取
+            chunked_files = list(extraction_dir.glob("*_chunked_output.json"))
+            if chunked_files:
+                chunked_file = chunked_files[0]
+                print(f"  - V2 格式: {chunked_file.name}")
+                with open(chunked_file, 'r') as f:
+                    chunked_json = json.load(f)
+                    # 从 results 中提取 chunks
+                    results = chunked_json.get('results', {})
+                    if results:
+                        result_key = list(results.keys())[0]
+                        chunks_data = results[result_key].get('chunks', [])
+                print(f"  ✓ 读取到 {len(chunks_data)} 个 chunks (V2)")
+            else:
+                print(f"  ⚠️  未找到 V2 chunked_output.json")
+        else:
+            # V1: 从 chunks.json 中读取
+            chunks_path = extraction_dir / "chunks.json"
+            if chunks_path.exists():
+                print(f"  - V1 格式: chunks.json")
+                with open(chunks_path, 'r') as f:
+                    full_chunks = json.load(f)
+                    if isinstance(full_chunks, dict) and 'chunks' in full_chunks:
+                        chunks_data = full_chunks.get('chunks', [])
+                    else:
+                        chunks_data = full_chunks
+                print(f"  ✓ 读取到 {len(chunks_data)} 个 chunks (V1)")
 
-        # 读取markdown
+        # 读取markdown（V1 和 V2 格式不同）
+        print(f"\n📝 读取 markdown...")
         markdown_content = ""
-        markdown_path = extraction_dir / f"{metadata['filename'].replace('.pdf', '.md')}"
-        if markdown_path.exists():
-            with open(markdown_path, 'r', encoding='utf-8') as f:
-                markdown_content = f.read()
+        
+        if api_version == "v2":
+            # V2: 从 *_extraction.md 读取
+            md_files = list(extraction_dir.glob("*_extraction.md"))
+            if md_files:
+                md_file = md_files[0]
+                print(f"  - V2 格式: {md_file.name}")
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    markdown_content = f.read()
+                print(f"  ✓ Markdown 长度: {len(markdown_content)} 字符 (V2)")
+        else:
+            # V1: 从文件名.md 读取
+            markdown_path = extraction_dir / f"{metadata['filename'].replace('.pdf', '.md')}"
+            if markdown_path.exists():
+                print(f"  - V1 格式: {markdown_path.name}")
+                with open(markdown_path, 'r', encoding='utf-8') as f:
+                    markdown_content = f.read()
+                print(f"  ✓ Markdown 长度: {len(markdown_content)} 字符 (V1)")
 
-        # 查找PDF文件
-        pdf_filename = f"{file_id}_{metadata['filename']}"
+        # 查找PDF文件（V1 和 V2 路径不同）
+        print(f"\n📎 查找 PDF 文件...")
+        pdf_filename_pattern = f"*{file_id}*{metadata['filename']}"
         pdf_path = None
-        for root, dirs, files in os.walk(base_upload_dir):
-            if pdf_filename in files:
-                pdf_path = Path(root) / pdf_filename
+        
+        # 递归查找
+        for pdf_file in base_upload_dir.rglob("*.pdf"):
+            if file_id in pdf_file.name and metadata['filename'] in pdf_file.name:
+                pdf_path = pdf_file
+                print(f"  ✓ 找到 PDF: {pdf_path}")
                 break
+        
+        if not pdf_path:
+            print(f"  ⚠️  未找到 PDF 文件")
+
+        print(f"\n" + "="*80)
+        print(f"✅ 文档详情提取完成 ({api_version.upper()})")
+        print("="*80)
+        print(f"  - Filename: {metadata.get('filename')}")
+        print(f"  - Chunks: {len(chunks_data)}")
+        print(f"  - Markdown: {len(markdown_content)} 字符")
+        print(f"  - PDF: {'有' if pdf_path else '无'}")
+        print("="*80 + "\n")
 
         return {
             "status": "success",
             "file_id": file_id,
-            "filename": metadata['filename'],
-            "metadata": metadata.get('metadata', {}),
+            "filename": metadata.get('filename'),
+            "api_version": api_version,  # ✅ 返回版本信息
+            "metadata": metadata.get('metadata', {}) if api_version == "v1" else metadata,
             "extraction_time": metadata.get('extraction_time'),
+            "extraction_mode": metadata.get('extraction_mode'),  # V2 特有
             "markdown": markdown_content,
             "chunks": chunks_data,
             "pdf_url": f"/document/{file_id}/pdf" if pdf_path else None,
             "total_chunks": len(chunks_data),
-            "total_pages": metadata.get('metadata', {}).get('total_pages', 0),
-            "total_images": metadata.get('metadata', {}).get('total_images', 0)
+            "total_pages": metadata.get('total_pages', 0) if api_version == "v2" else metadata.get('metadata', {}).get('total_pages', 0),
+            "total_images": metadata.get('total_images', 0) if api_version == "v2" else metadata.get('metadata', {}).get('total_images', 0)
         }
     except HTTPException:
         raise
@@ -1128,31 +1394,80 @@ async def get_document_details(file_id: str):
 
 @app.get("/document/{file_id}/pdf")
 async def get_document_pdf(file_id: str):
-    """直接返回PDF文件，Content-Disposition设置为inline以便浏览器内嵌显示"""
+    """直接返回PDF文件，Content-Disposition设置为inline以便浏览器内嵌显示（支持 V1 和 V2）"""
     try:
-        base_upload_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/uploads")
-        base_extraction_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/extraction_results")
-
-        # 读取metadata获取原始文件名
-        extraction_dir = base_extraction_dir / file_id
-        metadata_path = extraction_dir / "metadata.json"
-
-        if not metadata_path.exists():
+        print(f"\n📎 获取 PDF 文件请求: {file_id}")
+        
+        # 定义基础路径（V1 和 V2 现在都使用同一个路径，从环境变量读取）
+        import os
+        upload_base = Path(os.getenv(
+            "UPLOAD_BASE_DIR",
+            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/uploads"
+        ))
+        extraction_base = Path(os.getenv(
+            "EXTRACTION_RESULTS_DIR",
+            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/extraction_results"
+        ))
+        
+        base_dirs_v1 = {
+            'upload': upload_base,
+            'extraction': extraction_base
+        }
+        base_dirs_v2 = {
+            'upload': upload_base,
+            'extraction': extraction_base
+        }
+        
+        # 查找文件目录
+        extraction_dir = extraction_base / file_id
+        base_upload_dir = upload_base
+        
+        if not extraction_dir.exists():
             raise HTTPException(status_code=404, detail="文档不存在")
+        
+        # 通过文件特征判断版本（V1 vs V2）
+        has_v2_extraction = len(list(extraction_dir.glob("*_extraction.md"))) > 0
+        has_v2_chunked = len(list(extraction_dir.glob("*_chunked_output.json"))) > 0
+        has_v1_chunks = (extraction_dir / "chunks.json").exists()
+        
+        if has_v2_extraction or has_v2_chunked:
+            api_version = "v2"
+        elif has_v1_chunks:
+            api_version = "v1"
+        else:
+            api_version = "v1"  # 默认V1
+        
+        print(f"  - 使用版本: {api_version}")
+        
+        # 读取metadata
+        metadata_files = list(extraction_dir.glob("*_metadata.json")) + [extraction_dir / "metadata.json"]
+        metadata_path = None
+        for mf in metadata_files:
+            if mf.exists():
+                metadata_path = mf
+                break
+        
+        if not metadata_path:
+            raise HTTPException(status_code=404, detail="metadata文件不存在")
 
         with open(metadata_path, 'r', encoding='utf-8') as f:
             metadata = json.load(f)
 
         # 查找PDF文件
-        pdf_filename = f"{file_id}_{metadata['filename']}"
+        filename = metadata.get('filename', '')
         pdf_path = None
-        for root, dirs, files in os.walk(base_upload_dir):
-            if pdf_filename in files:
-                pdf_path = Path(root) / pdf_filename
+        
+        # 递归查找
+        for pdf_file in base_upload_dir.rglob("*.pdf"):
+            if file_id in pdf_file.name and filename in pdf_file.name:
+                pdf_path = pdf_file
                 break
 
         if not pdf_path or not pdf_path.exists():
+            print(f"  ❌ PDF 文件未找到")
             raise HTTPException(status_code=404, detail="PDF文件不存在")
+
+        print(f"  ✓ 找到 PDF: {pdf_path}")
 
         # 返回PDF，设置为inline模式以便浏览器内嵌显示
         from fastapi.responses import Response
@@ -1161,7 +1476,9 @@ async def get_document_pdf(file_id: str):
             pdf_content = f.read()
 
         # URL encode the filename for proper handling of Chinese characters
-        encoded_filename = quote(metadata['filename'])
+        encoded_filename = quote(filename)
+
+        print(f"  ✓ 返回 PDF ({api_version.upper()}): {filename}\n")
 
         return Response(
             content=pdf_content,
@@ -1181,7 +1498,7 @@ async def get_document_pdf(file_id: str):
 async def get_document_image(file_id: str, image_name: str):
     """获取文档提取的图片"""
     try:
-        base_extraction_dir = Path("/Users/mac/projects/demo/Multimodal_RAG/backend/output/extraction_results")
+        base_extraction_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/extraction_results")
 
         # 图片路径
         image_path = base_extraction_dir / file_id / "images" / image_name
@@ -1210,29 +1527,6 @@ async def get_document_image(file_id: str, image_name: str):
         print(f"获取图片失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
 
-
-# ============ 连接池监控端点 ============
-
-@app.get("/metrics/connections")
-async def connection_metrics():
-    """获取连接池监控指标"""
-    from utils.connection_pool import get_pool_stats
-    return get_pool_stats()
-
-
-# ============ 缓存统计端点 ============
-
-@app.get("/cache/stats")
-async def cache_stats():
-    """获取缓存统计信息"""
-    return cache.stats()
-
-@app.delete("/cache/clear")
-async def clear_cache(pattern: str = "search:*"):
-    """清除缓存（支持 pattern 匹配）"""
-    cache.clear_pattern(pattern)
-    return {"message": f"缓存已清除：{pattern}"}
-
 if __name__ == "__main__":
     host = os.getenv("SERVER_HOST", "0.0.0.0")
     port = int(os.getenv("SERVER_PORT", "8000"))
@@ -1245,20 +1539,3 @@ if __name__ == "__main__":
     print("="*60 + "\n")
     
     uvicorn.run(app, host=host, port=port)
-
-# ============ 连接池管理 ============
-
-from backend.utils.connection_pool import milvus_pool, http_pool
-
-@app.on_event("startup")
-async def startup_event():
-    """启动时初始化连接池"""
-    milvus_pool.initialize()
-    print("✅ 连接池初始化完成")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """关闭时清理连接池"""
-    import asyncio
-    asyncio.create_task(http_pool.close())
-    print("✅ 连接池已关闭")

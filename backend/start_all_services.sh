@@ -27,7 +27,7 @@ echo -e "${BLUE}========================================${NC}\n"
 # 检查并激活Conda虚拟环境
 if [ -f "$HOME/miniconda3/envs/vlm_rag/bin/python" ]; then
     PYTHON_CMD="$HOME/miniconda3/envs/vlm_rag/bin/python"
-export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+    export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
     echo -e "${GREEN}✓ 使用Conda虚拟环境: vlm_rag${NC}"
 elif command -v python3 &> /dev/null; then
     PYTHON_CMD="python3"
@@ -140,6 +140,70 @@ start_service "chat" \
     "kb_chat.py" \
     "8501"
 
+# 5. 启动 DeepSeek-OCR 服务（可选）
+echo -e "${BLUE}----------------------------------------${NC}"
+echo -e "${YELLOW}检查 DeepSeek-OCR 服务...${NC}"
+DEEPSEEK_SCRIPT="Information-Extraction/deepseekocr/start_deepseek_ocr.sh"
+DEEPSEEK_API="Information-Extraction/deepseekocr/api_server_mineru_format.py"
+
+if [ -f "$DEEPSEEK_API" ]; then
+    echo -e "${GREEN}✓ DeepSeek-OCR 服务可用${NC}"
+    echo -e "${YELLOW}是否启动 DeepSeek-OCR 服务? [y/N]${NC}"
+    
+    # 如果环境变量 AUTO_START_DEEPSEEK=true，则自动启动
+    if [ "$AUTO_START_DEEPSEEK" = "true" ]; then
+        response="y"
+        echo -e "${GREEN}自动启动模式 (AUTO_START_DEEPSEEK=true)${NC}"
+    else
+        # 设置5秒超时，默认不启动
+        read -t 5 -r response || response="n"
+    fi
+    
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}启动 DeepSeek-OCR 服务...${NC}"
+        echo -e "${BLUE}提示: DeepSeek-OCR 需要在后台独立运行${NC}"
+        echo -e "${BLUE}请在新终端运行: bash $DEEPSEEK_SCRIPT${NC}"
+        echo -e "${YELLOW}或设置 AUTO_START_DEEPSEEK=true 环境变量自动启动${NC}\n"
+    else
+        echo -e "${YELLOW}⚠️  跳过 DeepSeek-OCR 服务${NC}"
+        echo -e "${BLUE}如需使用，请手动运行: bash $DEEPSEEK_SCRIPT${NC}\n"
+    fi
+else
+    echo -e "${YELLOW}⚠️  DeepSeek-OCR 服务未安装（可选）${NC}\n"
+fi
+
+# 6. 启动 PaddleOCR-VL 服务（可选）
+echo -e "${BLUE}----------------------------------------${NC}"
+echo -e "${YELLOW}检查 PaddleOCR-VL 服务...${NC}"
+PADDLEOCR_SCRIPT="Information-Extraction/paddleocr/start_paddleocr_vl.sh"
+PADDLEOCR_API="Information-Extraction/paddleocr/api_paddleocr_vl_mineru.py"
+
+if [ -f "$PADDLEOCR_API" ]; then
+    echo -e "${GREEN}✓ PaddleOCR-VL 服务可用${NC}"
+    echo -e "${YELLOW}是否启动 PaddleOCR-VL 服务? [y/N]${NC}"
+    
+    # 如果环境变量 AUTO_START_PADDLEOCR=true，则自动启动
+    if [ "$AUTO_START_PADDLEOCR" = "true" ]; then
+        response="y"
+        echo -e "${GREEN}自动启动模式 (AUTO_START_PADDLEOCR=true)${NC}"
+    else
+        # 设置5秒超时，默认不启动
+        read -t 5 -r response || response="n"
+    fi
+    
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}启动 PaddleOCR-VL 服务...${NC}"
+        echo -e "${BLUE}提示: PaddleOCR-VL 需要在后台独立运行${NC}"
+        echo -e "${BLUE}请在新终端运行: bash $PADDLEOCR_SCRIPT${NC}"
+        echo -e "${YELLOW}或设置 AUTO_START_PADDLEOCR=true 环境变量自动启动${NC}\n"
+    else
+        echo -e "${YELLOW}⚠️  跳过 PaddleOCR-VL 服务${NC}"
+        echo -e "${BLUE}如需使用，请手动运行: bash $PADDLEOCR_SCRIPT${NC}\n"
+    fi
+else
+    echo -e "${YELLOW}⚠️  PaddleOCR-VL 服务未安装（可选）${NC}\n"
+fi
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}✅ 所有服务启动完成！${NC}"
 echo -e "${BLUE}========================================${NC}\n"
@@ -149,6 +213,8 @@ echo -e "  📄 PDF提取服务:     http://localhost:8006"
 echo -e "  ✂️  文本切分服务:     http://localhost:8001"
 echo -e "  🗄️  向量数据库服务:   http://localhost:8000"
 echo -e "  💬 对话检索服务:     http://localhost:8501"
+echo -e "  🤖 DeepSeek-OCR:    http://localhost:8705 ${YELLOW}(可选，需手动启动)${NC}"
+echo -e "  🔍 PaddleOCR-VL:    http://localhost:8802 ${YELLOW}(可选，需手动启动)${NC}"
 
 echo -e "\n${YELLOW}常用命令:${NC}"
 echo -e "  查看服务状态: ${GREEN}./status_services.sh${NC}"

@@ -23,7 +23,7 @@ services:
 
   minio:
     container_name: milvus-minio
-    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/minio/minio:RELEASE.2023-03-20T20-16-18Z
+    image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
     restart: always
     environment:
       MINIO_ACCESS_KEY: minioadmin

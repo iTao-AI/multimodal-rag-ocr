@@ -15,20 +15,19 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException # type: ignore
-from fastapi.responses import JSONResponse # type: ignore
-from fastapi.middleware.cors import CORSMiddleware # type: ignore
-from pydantic import BaseModel # type: ignore
-import pymupdf4llm # type: ignore
-import fitz # type: ignore
-from PIL import Image # type: ignore
-from pdf2image import convert_from_bytes # type: ignore
-import uvicorn # type: ignore
-# 使用全局 HTTP 连接池
-# import httpx # type: ignore
-from llm_extraction import PAGES_PER_REQUEST, CONCURRENT_REQUESTS # type: ignore
-from dotenv import load_dotenv # type: ignore
-from utils.connection_pool import get_http_client  # HTTP 连接池
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException 
+from fastapi.responses import JSONResponse, FileResponse 
+from fastapi.middleware.cors import CORSMiddleware 
+from fastapi.staticfiles import StaticFiles 
+from pydantic import BaseModel 
+import pymupdf4llm
+import fitz 
+from PIL import Image 
+from pdf2image import convert_from_bytes
+import uvicorn 
+import httpx 
+from llm_extraction import PAGES_PER_REQUEST, CONCURRENT_REQUESTS
+from dotenv import load_dotenv 
 
 # 加载 backend/.env 文件
 env_path = Path(__file__).parent.parent.parent.parent / '.env'
@@ -39,12 +38,12 @@ load_dotenv(dotenv_path=env_path, override=True)
 # 从环境变量读取配置，如果没有则使用默认值
 UPLOAD_BASE_DIR = Path(os.getenv(
     "UPLOAD_BASE_DIR",
-    "/Users/mac/projects/demo/Multimodal_RAG/backend/uploads"
+    "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/uploads"
 ))
 
 EXTRACTION_RESULTS_DIR = Path(os.getenv(
     "EXTRACTION_RESULTS_DIR",
-    "/Users/mac/projects/demo/Multimodal_RAG/backend/extraction_results"
+    "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/extraction_results"
 ))
 
 # 文件大小限制（MB）
@@ -76,6 +75,14 @@ MILVUS_API_ENABLED = os.getenv("MILVUS_API_ENABLED", "true").lower() == "true"
 # 创建必要的目录
 UPLOAD_BASE_DIR.mkdir(parents=True, exist_ok=True)
 EXTRACTION_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# 挂载静态文件目录（MinerU可视化图片）
+MINERU_VIZ_DIR = Path(os.getenv(
+    "MINERU_VIZ_DIR",
+    "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/mineru_visualizations"
+))
+MINERU_VIZ_DIR.mkdir(parents=True, exist_ok=True)
+
 
 print(f"配置加载完成:")
 print(f"  - 上传目录: {UPLOAD_BASE_DIR}")
@@ -147,7 +154,7 @@ class PDFExtractionService:
     """统一的PDF提取服务"""
     
     def __init__(self):
-        self.default_pages_per_request = PAGES_PER_REQUEST  # 修改这里
+        self.default_pages_per_request = PAGES_PER_REQUEST  
         self.default_concurrent_requests = CONCURRENT_REQUESTS
         self.default_dpi = 100
     
@@ -159,9 +166,6 @@ class PDFExtractionService:
         3. 给每页生成完整截图
         
         """
-        print(f"\n{'='*60}")
-        print(f"快速模式提取 - 使用PyMuPDF4LLM")
-        print(f"{'='*60}\n")
         
         # 获取文件名
         filename = original_filename or Path(file_path).name
@@ -174,7 +178,6 @@ class PDFExtractionService:
         temp_images_dir = temp_dir / "images"
         temp_images_dir.mkdir(exist_ok=True)
         
-        print("正在提取PDF内容和图片...")
         md_data = pymupdf4llm.to_markdown(
             str(pdf_path),
             page_chunks=True,
@@ -186,7 +189,6 @@ class PDFExtractionService:
         
         doc = fitz.open(str(pdf_path))
         total_pages = len(doc)
-        print(f"文档共 {total_pages} 页")
         
         markdown_parts = []
         
@@ -215,7 +217,6 @@ class PDFExtractionService:
                     markdown_parts.append(f"{{{{第{page_num}页}}}}\n")
                 markdown_parts.append(text)
         
-        print("\n正在收集提取的图片...")
         images_data = []
         
         for img_file in sorted(temp_images_dir.glob("*.png")):
@@ -237,16 +238,12 @@ class PDFExtractionService:
                     "base64": img_base64,
                     "page_num": page_num
                 })
-                
-                print(f"  ✓ {filename}")
-                
+                                
             except Exception as e:
-                print(f" 处理图片失败 {img_file.name}: {e}")
+                raise HTTPException(status_code=500, detail=f"处理图片失败 {img_file.name}: {e}")
         
-        print("\n正在生成页面完整截图...")
         for page_num in range(total_pages):
             page = doc[page_num]
-            print(f"  处理第 {page_num + 1}/{total_pages} 页")
             
             try:
                 pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
@@ -265,12 +262,11 @@ class PDFExtractionService:
                     "page_num": page_num + 1
                 })
                 
-                # 移除了下面这一行，不再在markdown中添加截图链接
                 markdown_parts.append(f"\n![{filename}](images/{filename})\n")
                 pix = None
                 
             except Exception as e:
-                print(f" 截图失败: {e}")
+                raise HTTPException(status_code=500, detail=f"截图失败: {e}")
         
         doc.close()
         
@@ -281,15 +277,9 @@ class PDFExtractionService:
         
         final_markdown = "".join(markdown_parts)
         
-        print(f"\n{'='*60}")
-        print(f"✓ 快速提取完成")
-        print(f"  - 页数: {total_pages}")
-        print(f"  - 图片数: {len(images_data)}")
-        print(f"  - Markdown长度: {len(final_markdown)} 字符")
-        print(f"{'='*60}\n")
         
         return {
-            "filename": filename,  # 添加这一行
+            "filename": filename,  
             "markdown": final_markdown,
             "images": images_data,
             "metadata": {
@@ -307,10 +297,7 @@ class PDFExtractionService:
         original_filename: Optional[str] = None  # 添加原始文件名参数
     ) -> Dict[str, Any]:
         """精确模式:使用LLM提取"""
-        print(f"\n{'='*60}")
-        print(f"精确模式提取 - 使用LLM ({model_name})")
-        print(f"{'='*60}\n")
-        
+ 
         from llm_extraction import PDFMultimodalExtractor
         
         extractor = PDFMultimodalExtractor(
@@ -341,18 +328,7 @@ class PDFExtractionService:
         final_markdown = "".join(markdown_parts)
         
         total_image_descriptions = sum(len(p.get('images', [])) for p in result.per_page_results)
-        
-        print(f"\n{'='*60}")
-        print(f"✓ 精确提取完成")
-        print(f"  - 页数: {result.metadata['total_pages']}")
-        print(f"  - 表格数: {result.metadata['total_tables']}")
-        print(f"  - 公式数: {result.metadata['total_formulas']}")
-        print(f"  - 图片描述: {total_image_descriptions} 个")
-        print(f"  - Token使用: {result.token_usage['total_tokens']:,}")
-        print(f"  - 耗时: {result.time_cost['total_time']}秒")
-        print(f"  - Markdown长度: {len(final_markdown)} 字符")
-        print(f"{'='*60}\n")
-        
+          
         # 获取文件名（不包含路径）
         filename = original_filename or Path(file_path).name
         
@@ -475,6 +451,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+app.mount("/visualizations", StaticFiles(directory=str(MINERU_VIZ_DIR)), name="visualizations")
+
 service = PDFExtractionService()
 
 
@@ -571,12 +550,6 @@ async def call_chunking_service(
     Returns:
         切分结果
     """
-    print(f"\n开始调用切分服务...")
-    print(f"  - 切分方法: {chunking_method}")
-    print(f"  - Chunk大小: {chunk_size}")
-    print(f"  - 重叠长度: {chunk_overlap}")
-    print(f"  - 最大跨页数: {max_page_span}")
-
     try:
         async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(
@@ -597,18 +570,11 @@ async def call_chunking_service(
             result = response.json()
 
             if result.get('success'):
-                chunks = result.get('data', {}).get('chunks', [])
-                chunk_stats = result.get('data', {}).get('chunk_stats', {})
-                print(f"✓ 切分完成:")
-                print(f"  - 总chunk数: {chunk_stats.get('total_chunks', 0)}")
-                print(f"  - 跨页chunk数: {chunk_stats.get('cross_page_chunks', 0)}")
-                print(f"  - 平均chunk长度: {chunk_stats.get('avg_chunk_length', 0):.0f}")
                 return result.get('data', {})
             else:
                 raise Exception(f"切分服务返回失败: {result.get('message')}")
 
     except httpx.HTTPError as e:
-        print(f"✗ 调用切分服务失败: {e}")
         raise Exception(f"切分服务调用失败: {str(e)}")
 
 
@@ -630,7 +596,6 @@ def save_chunking_results(file_id: str, chunking_data: Dict[str, Any]) -> str:
     with open(chunks_path, 'w', encoding='utf-8') as f:
         json.dump(chunking_data, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ 切分结果已保存: {chunks_path}")
     return str(chunks_path)
 
 
@@ -652,10 +617,6 @@ async def call_milvus_api(
     Returns:
         存储结果
     """
-    print(f"\n开始调用Milvus API服务存储chunks...")
-    print(f"  - 文件ID: {file_id}")
-    print(f"  - Chunk数量: {len(chunks)}")
-    print(f"  - 知识库ID: {knowledge_base_id or '默认'}")
 
     try:
         # 转换chunks为Milvus API期望的格式
@@ -710,10 +671,7 @@ async def call_milvus_api(
             # 检查响应状态
             if result.get('status') == 'success':
                 chunks_count = result.get('chunks_count', len(chunks))
-                print(f"✓ 成功存储到Milvus:")
-                print(f"  - 插入数量: {chunks_count}")
-                print(f"  - 集合名称: {collection_name}")
-                print(f"  - 文件ID: {result.get('file_id')}")
+
                 return {
                     "status": "completed",
                     "inserted_count": chunks_count,
@@ -811,8 +769,6 @@ async def upload_pdf(
         with open(file_path, 'wb') as f:
             f.write(content)
 
-        print(f"✓ 文件已保存: {file_path}")
-
         # 6. 准备返回数据
         response_data = {
             "file_id": file_id,
@@ -825,7 +781,6 @@ async def upload_pdf(
 
         # 7. 如果启用自动提取，执行提取操作
         if auto_extract:
-            print(f"\n开始自动提取（模式: {extraction_mode}）...")
             try:
                 if extraction_mode == "fast":
                     extraction_result = await service.extract_fast(
@@ -872,9 +827,7 @@ async def upload_pdf(
                     result_data=extraction_result
                 )
 
-                print(f"✓ 提取结果已保存到: {saved_paths['markdown']}")
-
-                # 将提取结果添加到响应中（不包含base64图片，只返回路径）
+                # 将提取结果添加到响应中
                 response_data['extraction'] = {
                     'status': 'completed',
                     'mode': extraction_mode,
@@ -882,12 +835,14 @@ async def upload_pdf(
                     'total_images': extraction_result.get('metadata', {}).get('total_images'),
                     'markdown_path': saved_paths['markdown'],
                     'images_dir': str(EXTRACTION_RESULTS_DIR / file_id / "images"),
-                    'saved_images_count': len(saved_paths.get('images', []))
+                    'saved_images_count': len(saved_paths.get('images', [])),
+                    'markdown': extraction_result.get('markdown', ''),
+                    'filename': extraction_result.get('filename', safe_filename),
+                    'metadata': extraction_result.get('metadata', {})
                 }
 
                 # 9. 如果启用自动切分，执行切分操作
                 if auto_chunk and CHUNKING_SERVICE_ENABLED:
-                    print(f"\n开始自动切分...")
                     try:
                         chunking_result = await call_chunking_service(
                             markdown=extraction_result.get('markdown', ''),
@@ -911,14 +866,13 @@ async def upload_pdf(
                             'total_chunks': chunking_result.get('chunk_stats', {}).get('total_chunks'),
                             'cross_page_chunks': chunking_result.get('chunk_stats', {}).get('cross_page_chunks'),
                             'avg_chunk_length': chunking_result.get('chunk_stats', {}).get('avg_chunk_length'),
-                            'chunks_path': chunks_path
+                            'chunks_path': chunks_path,
+                            'chunks': chunking_result.get('chunks', []),
+                            'chunk_stats': chunking_result.get('chunk_stats', {})
                         }
-
-                        print(f"✓ 切分完成，共生成 {chunking_result.get('chunk_stats', {}).get('total_chunks')} 个chunks")
 
                         # 10. 如果启用了Milvus API，存储chunks到向量数据库
                         if MILVUS_API_ENABLED:
-                            print(f"\n开始存储到Milvus数据库...")
                             try:
                                 chunks = chunking_result.get('chunks', [])
                                 storage_result = await call_milvus_api(
@@ -998,6 +952,426 @@ async def upload_pdf(
         return UploadResponse(
             success=False,
             message="文件上传失败",
+            error={
+                "code": "UPLOAD_FAILED",
+                "message": str(e)
+            }
+        )
+
+# ============ v2 API - OCR 2.0 ============
+
+@app.post("/api/v2/files/upload", response_model=UploadResponse)
+async def upload_pdf_v2(
+    file: UploadFile = File(...),
+    knowledge_base_id: Optional[str] = Form(None),
+    auto_extract: bool = Form(False),
+    extraction_mode: str = Form("mineru"),  # mineru, paddleocr, deepseek
+    auto_chunk: bool = Form(False),
+    chunking_method: str = Form("ocr_aware"),  # ocr_aware, layout_based
+    chunk_size: int = Form(1500),
+    chunk_overlap: int = Form(200),
+    max_page_span: int = Form(3)
+):
+    """
+    上传 PDF 文件并可选自动提取和切分 (OCR 2.0版本)
+    
+    Args:
+        file: PDF 文件
+        knowledge_base_id: 知识库 ID（可选）
+        auto_extract: 是否自动提取内容（默认 False）
+        extraction_mode: OCR方法，"mineru"、"paddleocr" 或 "deepseek"
+        auto_chunk: 是否自动切分（默认 False，需要 auto_extract=True）
+        chunking_method: 切分方法，"ocr_aware" 或 "layout_based"
+        chunk_size: 目标chunk大小（默认 1500）
+        chunk_overlap: chunk重叠长度（默认 200）
+        max_page_span: 最大跨页数（默认 3）
+    
+    Returns:
+        上传结果，包含文件信息、提取结果和切分结果（如果启用）
+    """
+    try:
+        # 导入OCR v2提取器
+        from ocr_v2_extractors import create_ocr_extractor
+        
+        # 1. 验证文件类型
+        if not file.filename or not file.filename.lower().endswith('.pdf'):
+            return UploadResponse(
+                success=False,
+                message="文件上传失败",
+                error={
+                    "code": "INVALID_FILE_TYPE",
+                    "message": "仅支持 PDF 格式文件"
+                }
+            )
+
+        # 2. 读取文件内容
+        content = await file.read()
+        file_size = len(content)
+
+        # 3. 验证文件大小
+        if file_size > MAX_FILE_SIZE:
+            return UploadResponse(
+                success=False,
+                message="文件上传失败",
+                error={
+                    "code": "FILE_TOO_LARGE",
+                    "message": f"文件大小超过限制 ({MAX_FILE_SIZE_MB}MB)"
+                }
+            )
+
+        # 4. 生成文件ID和保存路径
+        file_id = str(uuid.uuid4())
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        safe_filename = Path(file.filename).name
+
+        # 如果指定了知识库，保存到知识库目录下，否则保存到默认目录
+        if knowledge_base_id:
+            upload_dir = UPLOAD_BASE_DIR / knowledge_base_id
+        else:
+            upload_dir = UPLOAD_BASE_DIR / "default"
+
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        file_path = upload_dir / f"{timestamp}_{file_id}_{safe_filename}"
+
+        # 5. 保存文件
+        print(f"✓ 保存文件到: {file_path}")
+        with open(file_path, 'wb') as f:
+            f.write(content)
+
+        # 构建响应数据
+        response_data = {
+            'file': {
+                'file_id': file_id,
+                'filename': safe_filename,
+                'path': str(file_path),
+                'size': file_size,
+                'size_mb': round(file_size / (1024 * 1024), 2),
+                'upload_time': datetime.now().isoformat(),
+                'knowledge_base_id': knowledge_base_id
+            }
+        }
+
+        # 6. 如果启用了自动提取
+        if auto_extract:
+            print(f"✓ 开始OCR 2.0提取，方法: {extraction_mode}")
+            try:
+                # 创建OCR提取器
+                extractor = create_ocr_extractor(extraction_mode)
+                
+                # 执行OCR提取
+                extraction_result = await extractor.extract(file_path)
+                
+                # 保存提取结果
+                extraction_dir = EXTRACTION_RESULTS_DIR / file_id
+                extraction_dir.mkdir(parents=True, exist_ok=True)
+                
+                # 1. 保存 Markdown 文件
+                result_file = extraction_dir / f"{extraction_mode}_extraction.md"
+                with open(result_file, 'w', encoding='utf-8') as f:
+                    f.write(extraction_result['markdown'])
+                
+                # 2. 保存完整的原始 API 返回数据（output.json）
+                raw_data = extraction_result.get('raw_data', {})
+                if raw_data:
+                    output_json_file = extraction_dir / f"{extraction_mode}_output.json"
+                    with open(output_json_file, 'w', encoding='utf-8') as f:
+                        # 构建类似 MinerU demo 的 output.json 格式
+                        output_data = {
+                            'backend': raw_data.get('backend', extraction_mode),
+                            'version': raw_data.get('version', '2.5.4'),
+                            'results': {
+                                safe_filename.replace('.pdf', ''): raw_data
+                            }
+                        }
+                        json.dump(output_data, f, ensure_ascii=False, indent=2)
+                    print(f"  ✓ 保存完整数据: {output_json_file}")
+                
+                # 3. 分开保存 layout_info 的各个部分（如果存在）
+                layout_info = extraction_result.get('layout_info', {})
+                saved_layout_files = {}
+                
+                if layout_info:
+                    # 保存 middle_json
+                    if layout_info.get('middle_json'):
+                        middle_json_file = extraction_dir / f"{extraction_mode}_middle_json.json"
+                        with open(middle_json_file, 'w', encoding='utf-8') as f:
+                            json.dump(layout_info['middle_json'], f, ensure_ascii=False, indent=2)
+                        saved_layout_files['middle_json'] = str(middle_json_file)
+                    
+                    # 保存 model_output
+                    if layout_info.get('model_output'):
+                        model_output_file = extraction_dir / f"{extraction_mode}_model_output.json"
+                        with open(model_output_file, 'w', encoding='utf-8') as f:
+                            json.dump(layout_info['model_output'], f, ensure_ascii=False, indent=2)
+                        saved_layout_files['model_output'] = str(model_output_file)
+                    
+                    # 保存 content_list
+                    if layout_info.get('content_list'):
+                        content_list_file = extraction_dir / f"{extraction_mode}_content_list.json"
+                        with open(content_list_file, 'w', encoding='utf-8') as f:
+                            json.dump(layout_info['content_list'], f, ensure_ascii=False, indent=2)
+                        saved_layout_files['content_list'] = str(content_list_file)
+                
+                # 4. 保存轻量级元数据（不包含大的 layout_info 内容）
+                metadata_file = extraction_dir / f"{extraction_mode}_metadata.json"
+                with open(metadata_file, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        'file_id': file_id,
+                        'filename': safe_filename,
+                        'extraction_mode': extraction_mode,
+                        'total_pages': extraction_result['total_pages'],
+                        'total_images': extraction_result['total_images'],
+                        'extraction_time': datetime.now().isoformat(),
+                        'layout_files': saved_layout_files  # 只保存文件路径引用
+                    }, f, ensure_ascii=False, indent=2)
+                
+                print(f"✓ OCR 2.0提取完成 ({extraction_mode})")
+                print(f"  - 总页数: {extraction_result['total_pages']}")
+                print(f"  - 图片数: {extraction_result['total_images']}")
+                
+                response_data['extraction'] = {
+                    'status': 'completed',
+                    'method': extraction_mode,
+                    'total_pages': extraction_result['total_pages'],
+                    'total_images': extraction_result['total_images'],
+                    'markdown_path': str(result_file),
+                    'metadata_path': str(metadata_file),
+                    'visualization_paths': extraction_result.get('visualization_paths', []),
+                    # V2.0: 添加实际的 markdown 内容（供前端直接显示）
+                    'markdown': extraction_result.get('markdown', ''),
+                    # V2.0: 添加 OCR raw_data（可选，根据需求）
+                    'backend': extraction_mode,
+                    'version': '2.0'
+                }
+
+                # 7. 如果启用了自动切分（OCR 2.0 使用新的切分流程）
+                if auto_chunk and CHUNKING_SERVICE_ENABLED:
+                    print("\n" + "="*80)
+                    print(f"🔧 OCR 2.0 自动切分")
+                    print("="*80)
+                    print(f"  - 切分方法: {chunking_method} (V2 方法)")
+                    print(f"  - Chunk 大小: {chunk_size}")
+                    print(f"  - 重叠: {chunk_overlap}")
+                    print(f"  - 最大跨页: {max_page_span}")
+                    
+                    try:
+                        # 构建完整的 output.json 格式（符合 /chunk/v2 端点的要求）
+                        result_key = safe_filename.replace('.pdf', '')
+                        output_json_for_chunk = {
+                            'backend': raw_data.get('backend', extraction_mode),
+                            'version': raw_data.get('version', '2.5.4'),
+                            'results': {
+                                result_key: raw_data
+                            }
+                        }
+                        
+                        print(f"\n📦 准备调用切分服务:")
+                        print(f"  - URL: {CHUNKING_SERVICE_URL}/chunk/v2")
+                        print(f"  - Result Key: {result_key}")
+                        print(f"  - Output JSON 包含字段: {list(raw_data.keys())}")
+                        print(f"  - 是否有 images: {'images' in raw_data}")
+                        print(f"  - 是否有 page_images: {'page_images' in raw_data}")
+                        
+                        # 调用切分服务 v2 端点
+                        chunk_url = f"{CHUNKING_SERVICE_URL}/chunk/v2"
+                        chunk_payload = {
+                            'output_json': output_json_for_chunk,
+                            'result_key': result_key,
+                            'config': {
+                                'method': chunking_method,  # ocr_aware 或 layout_based
+                                'chunk_size': chunk_size,
+                                'chunk_overlap': chunk_overlap,
+                                'merge_tolerance': 0.2,
+                                'max_page_span': max_page_span,
+                                'bridge_span': 150,
+                                'add_bridges': True
+                            }
+                        }
+
+                        print(f"\n🌐 调用切分服务...")
+                        async with httpx.AsyncClient(timeout=300.0) as client:
+                            chunk_response = await client.post(chunk_url, json=chunk_payload)
+                        
+                        print(f"  - 响应状态码: {chunk_response.status_code}")
+
+                        if chunk_response.status_code == 200:
+                            chunked_output_json = chunk_response.json()
+                            
+                            # 从返回的 output.json 中提取 chunks 和统计信息
+                            result_data = chunked_output_json.get('results', {}).get(result_key, {})
+                            chunks = result_data.get('chunks', [])
+                            chunk_stats = result_data.get('chunk_stats', {})
+                            
+                            # 保存切分后的完整 output.json
+                            chunked_output_file = extraction_dir / f"{extraction_mode}_chunked_output.json"
+                            with open(chunked_output_file, 'w', encoding='utf-8') as f:
+                                json.dump(chunked_output_json, f, ensure_ascii=False, indent=2)
+                            
+                            print("\n" + "="*80)
+                            print("✅ OCR 2.0 切分完成")
+                            print("="*80)
+                            print(f"📊 切分统计:")
+                            print(f"  - 总 chunks: {len(chunks)}")
+                            print(f"  - 跨页桥接: {chunk_stats.get('bridge_chunks', 0)}")
+                            print(f"  - 跨页普通: {chunk_stats.get('cross_page_chunks', 0)}")
+                            print(f"  - 单页块: {chunk_stats.get('single_page_chunks', 0)}")
+                            print(f"  - 表格块: {chunk_stats.get('table_chunks', 0)}")
+                            print(f"  - 平均长度: {chunk_stats.get('avg_chunk_length', 0):.0f} 字符")
+                            
+                            print(f"\n💾 保存文件:")
+                            print(f"  - 切分结果: {chunked_output_file}")
+                            
+                            # 打印前2个 chunks 的详细信息
+                            print(f"\n📝 前 2 个 chunks 预览:")
+                            for i, chunk in enumerate(chunks[:2]):
+                                print(f"  Chunk {i+1}:")
+                                print(f"    - 页码: {chunk['page_start']}-{chunk['page_end']}")
+                                print(f"    - 长度: {chunk['text_length']} 字符")
+                                print(f"    - 跨页: {chunk.get('continued', False)}")
+                                print(f"    - 桥接: {chunk.get('cross_page_bridge', False)}")
+                                print(f"    - 文本: {chunk['text'][:60]}...")
+                            print("="*80 + "\n")
+                            
+                            response_data['chunking'] = {
+                                'status': 'completed',
+                                'method': chunking_method,
+                                'total_chunks': len(chunks),
+                                'chunk_stats': chunk_stats,
+                                'chunked_output_path': str(chunked_output_file),
+                                # V2.0: 添加实际的 chunks 数据（供前端直接显示）
+                                'chunks': chunks
+                            }
+
+                            # 8. 如果有知识库ID且启用了Milvus，存储到向量数据库（使用 V2 端点）
+                            if knowledge_base_id and MILVUS_API_ENABLED:
+                                print("\n" + "="*80)
+                                print(f"🗄️  OCR 2.0 向量数据库存储")
+                                print("="*80)
+                                print(f"  - Collection: {knowledge_base_id}")
+                                print(f"  - Chunks数量: {len(chunks)}")
+                                
+                                try:
+                                    # 调用 Milvus API V2 端点
+                                    storage_url = f"{MILVUS_API_URL}/upload_json/v2"
+                                    storage_payload = {
+                                        'collection_name': knowledge_base_id,
+                                        'file_id': file_id,  # ✅ 传递原始 file_id
+                                        'output_json': chunked_output_json,  # 传递完整的 output.json
+                                        'result_key': result_key
+                                    }
+                                    
+                                    print(f"\n🌐 调用 Milvus API V2...")
+                                    print(f"  - URL: {storage_url}")
+                                    print(f"  - Collection: {knowledge_base_id}")
+                                    print(f"  - File ID: {file_id}")
+                                    print(f"  - Result Key: {result_key}")
+                                    
+                                    async with httpx.AsyncClient(timeout=300.0) as client:
+                                        storage_response = await client.post(storage_url, json=storage_payload)
+                                    
+                                    print(f"  - 响应状态码: {storage_response.status_code}")
+                                    
+                                    if storage_response.status_code == 200:
+                                        storage_result = storage_response.json()
+                                        
+                                        print("\n" + "="*80)
+                                        print("✅ OCR 2.0 数据存储完成")
+                                        print("="*80)
+                                        print(f"  - 状态: {storage_result.get('status')}")
+                                        print(f"  - 插入数量: {storage_result.get('chunks_count')}")
+                                        print(f"  - Backend: {storage_result.get('backend')}")
+                                        print(f"  - Version: {storage_result.get('version')}")
+                                        print("="*80 + "\n")
+                                        
+                                        response_data['storage'] = {
+                                            'status': 'completed',
+                                            'collection_id': knowledge_base_id,
+                                            'inserted_count': storage_result.get('chunks_count'),
+                                            'backend': storage_result.get('backend'),
+                                            'version': storage_result.get('version')
+                                        }
+                                    else:
+                                        error_text = storage_response.text[:500] if storage_response.text else "No response"
+                                        print(f"\n❌ Milvus API 返回错误:")
+                                        print(f"  - 状态码: {storage_response.status_code}")
+                                        print(f"  - 错误: {error_text}")
+                                        response_data['storage'] = {
+                                            'status': 'failed',
+                                            'error': f'Milvus API 返回错误: {storage_response.status_code}, {error_text}'
+                                        }
+
+                                except Exception as storage_error:
+                                    print(f"\n❌ 存储异常: {storage_error}")
+                                    import traceback
+                                    traceback.print_exc()
+                                    response_data['storage'] = {
+                                        'status': 'failed',
+                                        'error': str(storage_error)
+                                    }
+                            elif not MILVUS_API_ENABLED:
+                                response_data['storage'] = {
+                                    'status': 'skipped',
+                                    'message': 'Milvus API服务未启用'
+                                }
+
+                        else:
+                            error_text = chunk_response.text[:500] if chunk_response.text else "No response body"
+                            print(f"\n❌ 切分服务返回错误:")
+                            print(f"  - 状态码: {chunk_response.status_code}")
+                            print(f"  - 错误信息: {error_text}")
+                            response_data['chunking'] = {
+                                'status': 'failed',
+                                'error': f'切分服务返回错误: {chunk_response.status_code}, {error_text}'
+                            }
+
+                    except Exception as chunk_error:
+                        print(f"\n❌ 自动切分异常:")
+                        print(f"  - 错误: {chunk_error}")
+                        import traceback
+                        traceback.print_exc()
+                        response_data['chunking'] = {
+                            'status': 'failed',
+                            'error': str(chunk_error)
+                        }
+                elif auto_chunk and not CHUNKING_SERVICE_ENABLED:
+                    response_data['chunking'] = {
+                        'status': 'skipped',
+                        'message': '切分服务未启用'
+                    }
+
+            except Exception as e:
+                print(f"✗ OCR 2.0提取失败: {e}")
+                import traceback
+                traceback.print_exc()
+                response_data['extraction'] = {
+                    'status': 'failed',
+                    'method': extraction_mode,
+                    'error': str(e)
+                }
+
+        # 构建成功消息
+        success_msg = "文件上传成功 (OCR 2.0)"
+        if auto_extract:
+            success_msg += f"并已完成{extraction_mode}提取"
+        if auto_chunk and CHUNKING_SERVICE_ENABLED:
+            success_msg += "和切分"
+        if response_data.get('storage', {}).get('status') == 'completed':
+            success_msg += "，已入库"
+
+        return UploadResponse(
+            success=True,
+            message=success_msg,
+            data=response_data
+        )
+
+    except Exception as e:
+        print(f"文件上传失败 (OCR 2.0): {e}")
+        import traceback
+        traceback.print_exc()
+
+        return UploadResponse(
+            success=False,
+            message="文件上传失败 (OCR 2.0)",
             error={
                 "code": "UPLOAD_FAILED",
                 "message": str(e)
@@ -1250,7 +1624,7 @@ def run_debug_mode(pdf_path: str, mode: str = "fast", **kwargs):
 if __name__ == "__main__":
     is_debug = False  # 如果要本地运行测试，将 False 改为 True
     if is_debug:
-        test_file_path  ="/Users/mac/projects/demo/Multimodal_RAG/backend/data/阿里开发手册-泰山版.pdf" # 这里替换成自己的
+        test_file_path  ="/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/data/阿里开发手册-泰山版.pdf" # 这里替换成自己的
 
         run_debug_mode(
             test_file_path, 
