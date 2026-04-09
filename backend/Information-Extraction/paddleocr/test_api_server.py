@@ -12,7 +12,7 @@ import base64
 from pathlib import Path
 
 # ============ 配置 ============
-API_URL = "http://192.168.110.131:8802"
+API_URL = "http://localhost:8802"
 TEST_PDF = "/home/data/nongwa/workspace/data/test.pdf"
 TEST_IMAGE = "/home/data/nongwa/workspace/data/图片3.jpg"  # 如果有测试图片
 OUTPUT_DIR = "/home/data/nongwa/workspace/paddleocr/api_test_output"

@@ -13,7 +13,7 @@ os.makedirs(output_file, exist_ok=True)
 # 快速模式
 with open(input_file, 'rb') as f:
     response = requests.post(
-        'http://192.168.110.131:8005/extract/fast',
+        'http://localhost:8005/extract/fast',
         files={'file': (input_file, f, 'application/pdf')}
     )
     fast_result = response.json()
@@ -40,7 +40,7 @@ with open(input_file, 'rb') as f:
 # 精确模式
 with open(input_file, 'rb') as f:
     response = requests.post(
-        'http://192.168.110.131:8005/extract/accurate',
+        'http://localhost:8005/extract/accurate',
         files={'file': (input_file, f, 'application/pdf')},
         data={
             'api_key': 'sk-0fb27bf3a9a448fa9a6f02bd70e37cd8',

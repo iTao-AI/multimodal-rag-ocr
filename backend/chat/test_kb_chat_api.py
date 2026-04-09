@@ -8,8 +8,8 @@ import time
 
 # ============ 配置 ============
 
-CHAT_API_URL = "http://192.168.110.131:8501"
-MILVUS_API_URL = "http://192.168.110.131:8002"
+CHAT_API_URL = "http://localhost:8501"
+MILVUS_API_URL = "http://localhost:8002"
 
 TOP_K = 5  # 最终保留的文档数量
 

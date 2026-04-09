@@ -61,8 +61,8 @@ class MinerUExtractor(BaseOCRExtractor):
     """MinerU提取器 - 增强版（支持可视化）"""
     
     def __init__(self):
-        self.api_url = os.getenv("MINERU_API_URL", "http://192.168.110.131:10010/file_parse")
-        self.vllm_url = os.getenv("VLLM_SERVER_URL", "http://192.168.110.131:30000")
+        self.api_url = os.getenv("MINERU_API_URL", "http://localhost:10010/file_parse")
+        self.vllm_url = os.getenv("VLLM_SERVER_URL", "http://localhost:30000")
         self.backend = os.getenv("MINERU_BACKEND", "pipeline")
         self.timeout = int(os.getenv("MINERU_TIMEOUT", "600"))
         
@@ -812,7 +812,7 @@ class DeepSeekOCRExtractor(BaseOCRExtractor):
     """DeepSeek OCR提取器 - 兼容MinerU格式"""
     
     def __init__(self):
-        self.api_url = os.getenv("DEEPSEEK_OCR_API_URL", "http://192.168.110.131:8705/v1/ocr/pdf")
+        self.api_url = os.getenv("DEEPSEEK_OCR_API_URL", "http://localhost:8705/v1/ocr/pdf")
         self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
         self.dpi = int(os.getenv("DEEPSEEK_OCR_DPI", "144"))
         self.base_size = int(os.getenv("DEEPSEEK_OCR_BASE_SIZE", "1024"))

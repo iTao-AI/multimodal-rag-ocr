@@ -4,7 +4,7 @@ import time
 from typing import Dict, Any
 
 # 测试配置
-BASE_URL = "http://192.168.110.131:8000"
+BASE_URL = "http://localhost:8000"
 TEST_KB = "test_knowledge_base"
 
 # 示例JSON数据（基于提供的样例）

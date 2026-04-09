@@ -3,7 +3,7 @@ import json
 import os   
 from pathlib import Path
 
-def chunk_markdown_api_from_json(json_file_path, api_url="http://192.168.110.131:8001/chunk"):
+def chunk_markdown_api_from_json(json_file_path, api_url="http://localhost:8001/chunk"):
     """
     从JSON文件中读取markdown内容并发送到API进行处理
     
@@ -50,7 +50,7 @@ def main():
     json_file_path = "/home/data/nongwa/workspace/Information-Extraction/unified/output/test/accurate_result.json"
     
     # API地址
-    api_url = "http://192.168.110.131:8001/chunk"
+    api_url = "http://localhost:8001/chunk"
     
     # 调用API
     result = chunk_markdown_api_from_json(json_file_path, api_url)

@@ -25,7 +25,7 @@ def _safe_parse_response(response: requests.Response) -> dict:
 class DeepSeekOCRClient:
     """DeepSeek OCR API 客户端"""
     
-    def __init__(self, base_url: str = "http://192.168.110.131:8705"):
+    def __init__(self, base_url: str = "http://localhost:8705"):
         self.base_url = base_url
     
     def health_check(self) -> dict:
