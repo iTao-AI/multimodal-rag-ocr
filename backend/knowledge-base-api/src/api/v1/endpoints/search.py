@@ -5,6 +5,7 @@ import os
 from src.services.vector_service import VectorService
 # 新增 — 使用相对路径，避免硬编码
 from pathlib import Path
+from sys import path as sys_path
 _milvus_server_path = Path(__file__).parent.parent.parent.parent.parent / 'Database' / 'milvus_server'
 sys_path.append(str(_milvus_server_path))
 from intent_classifier import classify_intent

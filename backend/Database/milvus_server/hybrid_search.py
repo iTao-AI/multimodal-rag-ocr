@@ -13,7 +13,7 @@
 import logging
 from typing import List, Dict, Any
 
-import jieba.analyse
+import jieba
 
 logger = logging.getLogger(__name__)
 
