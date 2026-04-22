@@ -3,9 +3,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 from src.services.vector_service import VectorService
-# 新增
-from sys import path as sys_path
-sys_path.append('/Users/mac/Developer/Projects/Active/multimodal-rag-ocr/backend/Database/milvus_server')
+# 新增 — 使用相对路径，避免硬编码
+from pathlib import Path
+_milvus_server_path = Path(__file__).parent.parent.parent.parent.parent / 'Database' / 'milvus_server'
+sys_path.append(str(_milvus_server_path))
 from intent_classifier import classify_intent
 from hybrid_search import apply_trust_boost
 
