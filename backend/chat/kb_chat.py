@@ -1,12 +1,14 @@
 ﻿"""
 RAG对话模块 - FastAPI接口版本
 支持向量召回、可选重排序、流式/非流式问答
+V2.1: 新增查询改写、混合检索 (BM25)、Redis 缓存
 """
 import asyncio
 import json
+import os
+import sys
 import time
 import uuid
-import os
 from typing import List, Dict, Any, Optional, AsyncIterable
 from datetime import datetime
 
@@ -17,6 +19,24 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
+
+# 检索增强组件 (V2.1)
+# 将 backend/ 目录加入 Python path，使 common/ 和 milvus_server/ 可导入
+_backend_dir = os.path.join(os.path.dirname(__file__), os.pardir)
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
+from common.cache_manager import get_cache_manager
+from chat.query_rewrite import get_query_rewrite_service
+from Database.milvus_server.hybrid_search import hybrid_rerank
+
+# 检索增强配置
+HYBRID_SEARCH_ENABLED = os.getenv("HYBRID_SEARCH_ENABLED", "true").lower() == "true"
+BM25_WEIGHT = float(os.getenv("BM25_WEIGHT", "0.3"))
+VECTOR_WEIGHT = float(os.getenv("VECTOR_WEIGHT", "0.7"))
+HYBRID_TOP_K = int(os.getenv("HYBRID_TOP_K", "50"))
+HYBRID_FINAL_TOP_K = int(os.getenv("HYBRID_FINAL_TOP_K", "10"))
+QUERY_REWRITE_ENABLED = os.getenv("QUERY_REWRITE_ENABLED", "true").lower() == "true"
 
 # 服务配置
 SERVICE_PORT = int(os.getenv("CHAT_SERVICE_PORT", "8501"))
@@ -88,7 +108,7 @@ class ChatResponse(BaseModel):
 
 class ChatService:
     """RAG对话服务"""
-    
+
     def __init__(self):
         self.default_prompt_template = """你是一个专业的AI助手。请根据以下检索到的相关信息回答用户的问题。
 
@@ -503,19 +523,69 @@ class ChatService:
         """
         try:
             start_time = time.time()
-            
-            # 1. 召回文档
-          
+
+            # 0. 缓存检查
+            cache = get_cache_manager()
+            cached = cache.get_query_result(request.collection_name, request.query)
+            if cached:
+                print(f"✓ 缓存命中: {request.query[:50]}...")
+                answer = cached["answer"]
+                sources_data = cached.get("sources", [])
+
+                # 流式输出缓存结果
+                for char in answer:
+                    yield json.dumps({"type": "content", "data": char}, ensure_ascii=False) + "\n"
+
+                if request.return_source and sources_data:
+                    yield json.dumps({"type": "sources", "data": sources_data}, ensure_ascii=False) + "\n"
+
+                yield json.dumps({
+                    "type": "metadata",
+                    "data": {
+                        "retrieve_time": 0,
+                        "rerank_time": 0,
+                        "llm_time": 0,
+                        "total_time": time.time() - start_time,
+                        "documents_count": len(sources_data),
+                        "cache_hit": True
+                    }
+                }, ensure_ascii=False) + "\n"
+                return
+
+            # 1. 查询改写 (生成多个变体)
+            rewrite_time = 0
+            queries = [request.query]
+            if QUERY_REWRITE_ENABLED:
+                try:
+                    rewrite_start = time.time()
+                    qr_service = get_query_rewrite_service()
+                    queries = await qr_service.rewrite_query(request.query)
+                    rewrite_time = time.time() - rewrite_start
+                    print(f"✓ 查询改写完成: {len(queries)} 个变体")
+                except Exception as e:
+                    print(f"⚠️ 查询改写失败，使用原始查询: {e}")
+                    queries = [request.query]
+
+            # 2. 多路召回 (对每个改写查询检索，合并结果)
             retrieve_start = time.time()
-            documents = await self.retrieve_documents(
-                query=request.query,
-                collection_name=request.collection_name,
-                milvus_api_url=request.milvus_api_url,
-                top_k=request.top_k,
-                score_threshold=request.score_threshold
-            )
+            all_documents = []
+            seen_ids = set()
+            for q in queries:
+                docs = await self.retrieve_documents(
+                    query=q,
+                    collection_name=request.collection_name,
+                    milvus_api_url=request.milvus_api_url,
+                    top_k=request.top_k,
+                    score_threshold=request.score_threshold
+                )
+                for doc in docs:
+                    doc_id = doc.get("id")
+                    if doc_id not in seen_ids:
+                        seen_ids.add(doc_id)
+                        all_documents.append(doc)
             retrieve_time = time.time() - retrieve_start
-            
+            documents = all_documents[:HYBRID_TOP_K]
+
             if not documents:
                 # 没有找到相关文档，直接用LLM回答
                 print("⚠️ 未找到相关文档，使用LLM直接回答")
@@ -564,7 +634,21 @@ class ChatService:
                 print(f"✓ 重排序耗时: {rerank_time:.2f}秒")
             else:
                 rerank_time = 0
-            
+
+            # 2.5 混合检索 (BM25 + 向量融合)
+            hybrid_time = 0
+            if HYBRID_SEARCH_ENABLED and not request.use_reranker and len(documents) > 1:
+                hybrid_start = time.time()
+                documents = hybrid_rerank(
+                    documents=documents,
+                    query=request.query,
+                    vector_weight=VECTOR_WEIGHT,
+                    bm25_weight=BM25_WEIGHT,
+                    final_top_k=HYBRID_FINAL_TOP_K,
+                )
+                hybrid_time = time.time() - hybrid_start
+                print(f"✓ BM25 混合检索耗时: {hybrid_time:.2f}秒")
+
             # 3. 构建上下文
             context = self.format_context(documents)
             
@@ -593,12 +677,15 @@ class ChatService:
             
             # 6. 调用LLM（流式）
             llm_start = time.time()
+            full_answer = []
             async for token in self.call_llm_stream(messages, request.llm_config):
+                full_answer.append(token)
                 yield json.dumps({
                     "type": "content",
                     "data": token
                 }, ensure_ascii=False) + "\n"
             llm_time = time.time() - llm_start
+            answer_text = "".join(full_answer)
             
             # 7. 发送来源文档
             if request.return_source and documents:
@@ -617,24 +704,39 @@ class ChatService:
                     "type": "sources",
                     "data": sources
                 }, ensure_ascii=False) + "\n"
-            
+
+            # 7.5 写入缓存
+            try:
+                cache.set_query_result(
+                    request.collection_name,
+                    request.query,
+                    {"answer": answer_text, "sources": sources if request.return_source and documents else []},
+                )
+            except Exception as e:
+                print(f"⚠️ 缓存写入失败: {e}")
+
             # 8. 返回元数据
             total_time = time.time() - start_time
             yield json.dumps({
                 "type": "metadata",
                 "data": {
                     "retrieve_time": retrieve_time,
+                    "rewrite_time": rewrite_time,
                     "rerank_time": rerank_time,
+                    "hybrid_time": hybrid_time,
                     "llm_time": llm_time,
                     "total_time": total_time,
-                    "documents_count": len(documents)
+                    "documents_count": len(documents),
+                    "cache_hit": False
                 }
             }, ensure_ascii=False) + "\n"
-            
+
             print(f"\n{'='*60}")
             print(f"✓ RAG对话完成")
+            print(f"  - 查询改写耗时: {rewrite_time:.2f}秒")
             print(f"  - 召回耗时: {retrieve_time:.2f}秒")
             print(f"  - 重排序耗时: {rerank_time:.2f}秒")
+            print(f"  - BM25混合检索耗时: {hybrid_time:.2f}秒")
             print(f"  - LLM耗时: {llm_time:.2f}秒")
             print(f"  - 总耗时: {total_time:.2f}秒")
             print(f"  - 文档数量: {len(documents)}")
@@ -660,23 +762,68 @@ class ChatService:
         非流式对话处理
         """
         start_time = time.time()
-        
+
         try:
-            # 1. 召回文档
             print(f"\n{'='*60}")
             print(f"开始RAG对话流程（非流式）")
             print(f"{'='*60}\n")
-            
+
+            # 0. 缓存检查
+            cache = get_cache_manager()
+            cached = cache.get_query_result(request.collection_name, request.query)
+            if cached:
+                print(f"✓ 缓存命中: {request.query[:50]}...")
+                return ChatResponse(
+                    success=True,
+                    message="对话完成（缓存）",
+                    answer=cached["answer"],
+                    sources=[SourceDocument(**s) for s in cached.get("sources", [])] if cached.get("sources") else None,
+                    metadata={
+                        "retrieve_time": 0,
+                        "rewrite_time": 0,
+                        "rerank_time": 0,
+                        "hybrid_time": 0,
+                        "llm_time": 0,
+                        "total_time": time.time() - start_time,
+                        "documents_count": len(cached.get("sources", [])),
+                        "cache_hit": True
+                    }
+                )
+
+            # 1. 查询改写
+            rewrite_time = 0
+            queries = [request.query]
+            if QUERY_REWRITE_ENABLED:
+                try:
+                    rewrite_start = time.time()
+                    qr_service = get_query_rewrite_service()
+                    queries = await qr_service.rewrite_query(request.query)
+                    rewrite_time = time.time() - rewrite_start
+                    print(f"✓ 查询改写完成: {len(queries)} 个变体")
+                except Exception as e:
+                    print(f"⚠️ 查询改写失败，使用原始查询: {e}")
+                    queries = [request.query]
+
+            # 2. 多路召回
             retrieve_start = time.time()
-            documents = await self.retrieve_documents(
-                query=request.query,
-                collection_name=request.collection_name,
-                milvus_api_url=request.milvus_api_url,
-                top_k=request.top_k,
-                score_threshold=request.score_threshold
-            )
+            all_documents = []
+            seen_ids = set()
+            for q in queries:
+                docs = await self.retrieve_documents(
+                    query=q,
+                    collection_name=request.collection_name,
+                    milvus_api_url=request.milvus_api_url,
+                    top_k=request.top_k,
+                    score_threshold=request.score_threshold
+                )
+                for doc in docs:
+                    doc_id = doc.get("id")
+                    if doc_id not in seen_ids:
+                        seen_ids.add(doc_id)
+                        all_documents.append(doc)
             retrieve_time = time.time() - retrieve_start
-            
+            documents = all_documents[:HYBRID_TOP_K]
+
             if not documents:
                 # 没有找到相关文档，直接用LLM回答
                 print("⚠️ 未找到相关文档，使用LLM直接回答")
@@ -718,7 +865,21 @@ class ChatService:
                 rerank_time = time.time() - rerank_start
             else:
                 rerank_time = 0
-            
+
+            # 2.5 混合检索 (BM25 + 向量融合)
+            hybrid_time = 0
+            if HYBRID_SEARCH_ENABLED and not request.use_reranker and len(documents) > 1:
+                hybrid_start = time.time()
+                documents = hybrid_rerank(
+                    documents=documents,
+                    query=request.query,
+                    vector_weight=VECTOR_WEIGHT,
+                    bm25_weight=BM25_WEIGHT,
+                    final_top_k=HYBRID_FINAL_TOP_K,
+                )
+                hybrid_time = time.time() - hybrid_start
+                print(f"✓ BM25 混合检索耗时: {hybrid_time:.2f}秒")
+
             # 3. 构建上下文
             context = self.format_context(documents)
             
@@ -761,18 +922,33 @@ class ChatService:
                     )
                     sources.append(source_doc)
             
-            # 8. 返回结果
+            # 8. 写入缓存
+            try:
+                cache.set_query_result(
+                    request.collection_name,
+                    request.query,
+                    {
+                        "answer": answer,
+                        "sources": [s.model_dump() for s in sources] if sources else []
+                    },
+                )
+            except Exception as e:
+                print(f"⚠️ 缓存写入失败: {e}")
+
+            # 9. 返回结果
             total_time = time.time() - start_time
-            
+
             print(f"\n{'='*60}")
             print(f"✓ RAG对话完成")
+            print(f"  - 查询改写耗时: {rewrite_time:.2f}秒")
             print(f"  - 召回耗时: {retrieve_time:.2f}秒")
             print(f"  - 重排序耗时: {rerank_time:.2f}秒")
+            print(f"  - BM25混合检索耗时: {hybrid_time:.2f}秒")
             print(f"  - LLM耗时: {llm_time:.2f}秒")
             print(f"  - 总耗时: {total_time:.2f}秒")
             print(f"  - 文档数量: {len(documents)}")
             print(f"{'='*60}\n")
-            
+
             return ChatResponse(
                 success=True,
                 message="对话完成",
@@ -780,10 +956,13 @@ class ChatService:
                 sources=sources,
                 metadata={
                     "retrieve_time": retrieve_time,
+                    "rewrite_time": rewrite_time,
                     "rerank_time": rerank_time,
+                    "hybrid_time": hybrid_time,
                     "llm_time": llm_time,
                     "total_time": total_time,
-                    "documents_count": len(documents)
+                    "documents_count": len(documents),
+                    "cache_hit": False
                 }
             )
             

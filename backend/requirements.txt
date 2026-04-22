@@ -17,3 +17,7 @@ langchain-text-splitters==0.3.11
 pypinyin==0.55.0
 Image==1.5.33
 pypdfium2==4.30.0
+# 检索增强 (从原始 Multimodal_RAG 恢复)
+rank-bm25>=0.2.2
+jieba>=0.42.1
+redis>=5.0.0
