@@ -1,0 +1,23 @@
+pymupdf4llm==0.0.27
+pdf2image==1.17.0 
+aiohttp==3.13.0
+openai==2.3.0
+fastapi==0.119.0
+uvicorn==0.37.0
+python-multipart==0.0.20
+requests==2.32.5
+numpy>=1.26.0
+pandas>=2.0.0
+pymilvus==2.6.2
+scipy>=1.13.0
+protobuf>=5.27.2
+langchain==0.3.27
+langchain-text-splitters==0.3.11
+# langchain-chatchat==0.3.1.3  # 依赖冲突，暂时禁用
+pypinyin==0.55.0
+Image==1.5.33
+pypdfium2==4.30.0
+# 检索增强 (从原始 Multimodal_RAG 恢复)
+rank-bm25>=0.2.2
+jieba>=0.42.1
+redis>=5.0.0
