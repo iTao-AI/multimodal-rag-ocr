@@ -19,7 +19,7 @@
 
 ```bash
 # API 配置（用于精确模式提取）
-API_KEY=sk-10a2439225
+API_KEY=your-api-key
 MODEL_NAME=qwen3-vl-plus
 MODEL_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
