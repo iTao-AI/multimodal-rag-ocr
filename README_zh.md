@@ -1,3 +1,5 @@
+[English](./README.md) | [中文](./README_zh.md)
+
 # Multimodal RAG OCR
 
 一个支持 PDF 文档解析、OCR 提取、向量存储和 AI 问答的知识库系统。支持轻量级 PDF 提取（V1.0）和企业级 OCR 管道（V2.0，MinerU / PaddleOCR-VL / DeepSeek-OCR）。

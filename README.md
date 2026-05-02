@@ -1,3 +1,5 @@
+[English](./README.md) | [中文](./README_zh.md)
+
 # Multimodal RAG OCR
 
 A knowledge base system with PDF document ingestion, OCR extraction, vector storage, and AI-powered Q&A. Supports both lightweight PDF extraction (V1.0) and enterprise-grade OCR pipelines (V2.0 with MinerU / PaddleOCR-VL / DeepSeek-OCR).
