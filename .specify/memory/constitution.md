@@ -2,9 +2,9 @@
 
 <!--
 Sync Impact Report:
-- Version: NEW (initial constitution)
-- Added: All 5 principles, Security Requirements, Development Workflow, Governance
-- Templates requiring updates: ⚠ pending (.specify/templates/plan-template.md, .specify/templates/spec-template.md, .specify/templates/tasks-template.md)
+- Version: 1.1.0 (MINOR: Principle VI added, Security Requirements clarified)
+- Added: Principle VI (Frontend Defaults), Security clarifications for tracked secrets
+- Templates requiring updates: ✅ not applicable (generic templates, no constitution references)
 - Follow-up TODOs: None
 -->
 
@@ -42,7 +42,7 @@ Prefer obvious, readable code over abstractions. When a fix requires 10 obvious 
 
 - Duplicate code is acceptable when the duplication is in different services with different error handling needs
 - Extract shared logic ONLY when it appears in 3+ places AND the abstraction is clear
-- File size is not a sin; unclear responsibilities in a file is
+- File size is not a sin; unclear responsibilities in a file are
 
 **Rationale**: This is a microservice architecture with 4 independent services. Over-abstraction across service boundaries creates coupling that defeats the purpose of microservices.
 
@@ -65,13 +65,21 @@ When external services fail, the system MUST degrade gracefully rather than cras
 
 Every degradation path MUST be logged at WARNING level or higher.
 
-**Rationale**: The system depends on 4 external services. Any single point of failure turning into a full system crash is unacceptable for production use.
+### VI. Frontend Defaults
+
+The frontend MUST implement robust error handling for all API calls:
+- Every `fetch()` MUST check `response.ok` before calling `.json()` — unhandled 500 responses cause component crashes
+- Every user-facing action MUST implement loading, success, error, and empty states
+- User settings MUST persist to `localStorage` — in-memory state is lost on navigation
+- `.backup` files, temporary test HTML, and dead components MUST be removed — dead code in the repo confuses reviewers and bloats diffs
+
+**Rationale**: The frontend has multiple non-functional buttons and missing error guards, which indicates a pattern of incomplete UI work shipped to the repo. Users see white screens on API failures.
 
 ## Security Requirements
 
 - **API Key Management**: All API keys stored in `backend/.env`, never in code. The file MUST be in `.gitignore` and never tracked.
 - **Frontend Secrets**: The frontend MUST NOT hold, transmit, or request LLM API keys. All keys are server-side only.
-- **Git Hygiene**: Before any commit, verify no secrets appear in the diff. Use `git log -p` to scan history for leaked credentials.
+- **Git Hygiene**: Before any commit, verify no secrets appear in the diff. Use `git log -p` to scan history for leaked credentials. Note: `frontend/.env` is in `.gitignore` but may have been committed before — run `git rm --cached frontend/.env` to untrack.
 - **Milvus Security**: Docker-compose MUST NOT use default credentials (`minioadmin/minioadmin`). Production passwords injected via environment variables.
 - **Milvus Restart Policy**: Milvus docker-compose MUST NOT use `restart: always`. etcd WAL logs will fill disk. Manual start/stop only.
 
@@ -99,4 +107,4 @@ This constitution supersedes all other development practices. Amendments require
 
 **Runtime Guidance**: See `CLAUDE.md` for project-specific development guidance and skill routing rules.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-30 | **Last Amended**: 2026-05-28
+**Version**: 1.1.0 | **Ratified**: 2026-04-30 | **Last Amended**: 2026-05-28
