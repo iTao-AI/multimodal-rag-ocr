@@ -65,6 +65,23 @@ class DeleteRequest(BaseModel):
 class DeleteKBRequest(BaseModel):
     collection_name: str
 
+
+def call_with_retry(func, max_retries=3, base_delay=1):
+    """
+    带指数退避重试的函数包装器
+    重试间隔：base_delay * 2^(attempt-1)，即 1s → 2s → 4s
+    """
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise  # 最后一次，重新抛出
+            delay = base_delay * (2 ** attempt)
+            print(f"API 调用失败 (第 {attempt + 1}/{max_retries} 次重试): {e}，{delay}s 后重试")
+            time.sleep(delay)
+
+
 class MilvusRAGService:
     def __init__(self):
         self.milvus_host = MILVUS_HOST
@@ -93,32 +110,34 @@ class MilvusRAGService:
     
     def generate_embedding(self, text: str) -> List[float]:
         """单个文本生成向量（用于query）"""
-        try:
+        def _call_api():
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.embedding_api_key}"
             }
-            
+
             payload = {
                 "model": self.embedding_model_name,
                 "input": [text]
             }
-            
+
             response = requests.post(self.embedding_url, json=payload, headers=headers, timeout=30)
-            
+
             if response.status_code == 200:
                 result = response.json()
                 embedding = result["data"][0]["embedding"]
                 return embedding
             else:
-                print(f"Embedding API error: {response.status_code}")
-                fallback_dim = self.get_model_dimension(self.embedding_model_name)
-                return np.random.rand(fallback_dim).tolist()
-                
+                raise Exception(f"Embedding API 返回错误: {response.status_code}")
+
+        try:
+            return call_with_retry(_call_api, max_retries=3, base_delay=1)
         except Exception as e:
-            print(f"Embedding generation failed: {e}")
-            fallback_dim = self.get_model_dimension(self.embedding_model_name)
-            return np.random.rand(fallback_dim).tolist()
+            print(f"Embedding generation failed after retries: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"向量生成服务不可用: {e}"
+            )
     
     def generate_embeddings_batch(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
