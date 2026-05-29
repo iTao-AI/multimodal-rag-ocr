@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
 
 interface DocumentViewerProps {
   fileId: string;
@@ -50,8 +51,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
   const fetchDocumentData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${config.milvusApiUrl}/document/${fileId}/details`);
-      const result = await response.json();
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/document/${fileId}/details`);
 
       if (result.status === 'success') {
         setDocData(result);

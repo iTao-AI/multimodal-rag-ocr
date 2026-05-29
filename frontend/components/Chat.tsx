@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
 
 interface Message {
   id: string;
@@ -83,8 +84,7 @@ export function Chat({ isV2 = false }: ChatProps) {
     const fetchData = async () => {
       try {
         // 加载知识库列表
-        const kbResponse = await fetch(`${config.milvusApiUrl}/knowledge_base/list`);
-        const kbResult = await kbResponse.json();
+        const kbResult = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/list`);
 
         if (kbResult.status === 'success' && kbResult.knowledge_bases.length > 0) {
           // ✅ 根据版本过滤知识库
@@ -115,8 +115,7 @@ export function Chat({ isV2 = false }: ChatProps) {
         }
 
         // 加载默认LLM配置
-        const configResponse = await fetch(`${config.chatApiUrl}/config/default`);
-        const configResult = await configResponse.json();
+        const configResult = await safeFetchJSON(`${config.chatApiUrl}/config/default`);
 
         if (configResult.status === 'success') {
           setLLMConfig(configResult.config.llm);
