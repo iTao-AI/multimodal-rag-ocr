@@ -5,6 +5,7 @@
 import requests
 import json
 import time
+import os
 
 # ============ 配置 ============
 
@@ -25,7 +26,7 @@ LLM_CONFIG = {
 # 重排序配置（如果不使用，留空即可）
 RERANKER_CONFIG = {
     "api_url": "https://api.jina.ai/v1",
-    "api_key": "REDACTED",
+    "api_key": os.getenv("JINA_RERANKER_API_KEY", ""),
     "model_name": "jina-reranker-v2-base-multilingual",
     "top_n": TOP_K
 }
