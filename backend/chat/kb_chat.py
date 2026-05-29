@@ -1062,7 +1062,7 @@ async def get_default_config():
         "config": {
             "llm": {
                 "api_url": os.getenv("MODEL_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-                "api_key": os.getenv("API_KEY", ""),
+                "api_key": "***",  # Never expose actual API key to frontend
                 "model_name": os.getenv("MODEL_NAME", "qwen-plus"),
                 "temperature": 0.7,
                 "max_tokens": 2000
