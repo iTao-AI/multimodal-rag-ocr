@@ -287,11 +287,13 @@ def get_ChatOpenAI(
     temperature: float = Settings.model_settings.TEMPERATURE,
     max_tokens: int = Settings.model_settings.MAX_TOKENS,
     streaming: bool = True,
-    callbacks: List[Callable] = [],
+    callbacks: Optional[List[Callable]] = None,
     verbose: bool = True,
     local_wrap: bool = False,  # use local wrapped api
     **kwargs: Any,
 ) -> ChatOpenAI:
+    if callbacks is None:
+        callbacks = []
     model_info = get_model_info(model_name)
     params = dict(
         streaming=streaming,
@@ -332,12 +334,14 @@ def get_OpenAI(
     max_tokens: int = Settings.model_settings.MAX_TOKENS,
     streaming: bool = True,
     echo: bool = True,
-    callbacks: List[Callable] = [],
+    callbacks: Optional[List[Callable]] = None,
     verbose: bool = True,
     local_wrap: bool = False,  # use local wrapped api
     **kwargs: Any,
 ) -> OpenAI:
     # TODO: 从API获取模型信息
+    if callbacks is None:
+        callbacks = []
     model_info = get_model_info(model_name)
     params = dict(
         streaming=streaming,
@@ -722,13 +726,15 @@ def get_prompt_template(type: str, name: str) -> Optional[str]:
 def set_httpx_config(
     timeout: float = Settings.basic_settings.HTTPX_DEFAULT_TIMEOUT,
     proxy: Union[str, Dict] = None,
-    unused_proxies: List[str] = [],
+    unused_proxies: Optional[List[str]] = None,
 ):
     """
     设置httpx默认timeout。httpx默认timeout是5秒，在请求LLM回答时不够用。
     将本项目相关服务加入无代理列表，避免fastchat的服务器请求错误。(windows下无效)
     对于chatgpt等在线API，如要使用代理需要手动配置。搜索引擎的代理如何处置还需考虑。
     """
+    if unused_proxies is None:
+        unused_proxies = []
 
     import os
 
@@ -779,12 +785,14 @@ def set_httpx_config(
 
 def run_in_thread_pool(
     func: Callable,
-    params: List[Dict] = [],
+    params: Optional[List[Dict]] = None,
 ) -> Generator:
     """
     在线程池中批量运行任务，并将运行结果以生成器的形式返回。
     请确保任务中的所有操作是线程安全的，任务函数请全部使用关键字参数。
     """
+    if params is None:
+        params = []
     tasks = []
     with ThreadPoolExecutor() as pool:
         for kwargs in params:
@@ -799,12 +807,14 @@ def run_in_thread_pool(
 
 def run_in_process_pool(
     func: Callable,
-    params: List[Dict] = [],
+    params: Optional[List[Dict]] = None,
 ) -> Generator:
     """
     在线程池中批量运行任务，并将运行结果以生成器的形式返回。
     请确保任务中的所有操作是线程安全的，任务函数请全部使用关键字参数。
     """
+    if params is None:
+        params = []
     tasks = []
     max_workers = None
     if sys.platform.startswith("win"):
@@ -826,12 +836,14 @@ def get_httpx_client(
     use_async: bool = False,
     proxies: Union[str, Dict] = None,
     timeout: float = Settings.basic_settings.HTTPX_DEFAULT_TIMEOUT,
-    unused_proxies: List[str] = [],
+    unused_proxies: Optional[List[str]] = None,
     **kwargs,
 ) -> Union[httpx.Client, httpx.AsyncClient]:
     """
     helper to get httpx client with default proxies that bypass local addesses.
     """
+    if unused_proxies is None:
+        unused_proxies = []
     default_proxies = {
         # do not use proxy for locahost
         "all://127.0.0.1": None,

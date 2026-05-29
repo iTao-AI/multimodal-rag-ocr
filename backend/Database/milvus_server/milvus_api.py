@@ -627,10 +627,10 @@ class MilvusRAGService:
             # 执行查询
             results = collection.query(
                 expr=expr,
-                limit=top_k,
                 output_fields=["chunk_text", "filename", "file_id", "metadata", "created_at"]
             )
-            
+            results = results[:top_k]
+
             # 格式化结果
             formatted_results = []
             for result in results:
@@ -722,9 +722,9 @@ class MilvusRAGService:
                 # 查询所有记录的filename字段
                 results = collection.query(
                     expr="id > 0",
-                    output_fields=["filename", "created_at"],
-                    limit=16384  # Milvus默认最大限制
+                    output_fields=["filename", "created_at"]
                 )
+                results = results[:16384]
 
                 # 统计唯一文件名
                 unique_filenames = set()
@@ -782,9 +782,9 @@ class MilvusRAGService:
             try:
                 results = collection.query(
                     expr="id > 0",
-                    output_fields=["filename", "file_id", "metadata", "created_at"],
-                    limit=16384
+                    output_fields=["filename", "file_id", "metadata", "created_at"]
                 )
+                results = results[:16384]
 
                 print(f"\n📊 查询知识库文档列表: {collection_id}")
                 print(f"  - 总记录数: {len(results)}")
@@ -881,12 +881,13 @@ class MilvusRAGService:
 app = FastAPI(title="Milvus RAG Service", version="2.0.0")
 
 # 配置CORS
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有来源，生产环境应该限制具体域名
+    allow_origins=[frontend_url],
     allow_credentials=True,
-    allow_methods=["*"],  # 允许所有HTTP方法
-    allow_headers=["*"],  # 允许所有headers
+    allow_methods=["GET", "POST", "DELETE", "PUT"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # 初始化Milvus服务
