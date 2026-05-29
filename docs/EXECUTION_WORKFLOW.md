@@ -106,6 +106,27 @@ Phase 的 worktree 命名规则：
 
 [从 Plan 文档中复制该 Phase 的全部 Task 内容]
 
+## 任务标签执行规则
+
+每个 task 按以下标签分类执行。如果你的任务不涉及某类标签，跳过对应规则即可。
+
+### [FE] 前端任务
+- 写测试前先读取设计文档和设计稿（如果有 DESIGN.md 或设计参考目录）
+- 实现时优先复用现有组件和模式，不要从零重写
+- 遵守 constitution 中的 Frontend Defaults 原则
+
+### [BE] 后端任务
+- 按 plan 中的契约规范写测试 stub（API 契约、OpenAPI / JSON Schema），如不涉及可忽略
+- 服务间调用必须有明确的接口定义
+- 外部 API 调用必须有超时和重试逻辑
+
+### [INT] 集成任务
+- 必须在对应 [FE] 和 [BE] 都通过后启动，跑真实端到端（不 mock）
+- 涉及两类场景：
+  - E2E 类 [INT]：只在最后跑真实链路
+  - config/migration/契约类 [INT]：按 tasks.md 的依赖图正常排序
+- 跨 feature patch 类 [INT]：改完必须重跑被改 feature 的现有单测，绿了才算过
+
 ## TDD 强制要求（CRITICAL）
 
 每个 Task 执行时，必须按以下顺序操作：
@@ -134,7 +155,23 @@ Phase 的 worktree 命名规则：
 在 commit 之前，调用：
 `Skill("superpowers:requesting-code-review")`
 
-让其他 agent 或主 agent 审查 diff。根据 review 意见修改后，再 commit。
+让其他 agent 或主 agent 审查 diff。审查必须覆盖以下 4 类关键缺陷：
+
+1. **韧性缺陷**：缺重试 / 缺超时 / 缺熔断器
+2. **横切一致性缺陷**：鉴权 / 限流 / 日志 是否覆盖了所有接口
+   （"4 个接口里 3 个有鉴权检查，第 4 个漏了"是经典翻车场景）
+3. **防御性编码缺陷**：未处理的 null / 缺输入校验 / 缺幂等键
+4. **数据库迁移缺陷（如涉及）**：是否有回滚脚本 + 是否分批操作
+
+根据 review 意见修改后，再 commit。审查报告使用以下格式：
+
+| 编号 | 类别 | 文件:行 | 描述 | 修复优先级 |
+|------|------|---------|------|-----------|
+| 1 | 韧性 | chat.py:134 | retrieve_documents() 缺超时设置 | P0 |
+| 2 | 防御性 | api.py:42 | 未处理 API 返回空 choices | P1 |
+
+0 个缺陷 → 进入 commit
+有缺陷 → 回到对应 task 走 TDD 修复，重新走一次 requesting-code-review，直到 0 缺陷
 
 如果涉及安全变更（密钥、鉴权、CORS），额外调用：
 `Skill("cso")`
@@ -179,10 +216,15 @@ Test plan:
 4. 无遗留 TODO/TBD/占位符
 
 报告格式：
-- 任务完成数：X/Y
-- 测试通过率：X/Y
-- lint 状态：通过/失败（列出失败项）
-- 遗留问题：无 或 列出具体问题
+```
+=== [Phase 名称] 完成报告 ===
+任务完成数：X/Y
+[FE] 任务：M 个 | [BE] 任务：K 个 | [INT] 任务：L 个
+测试通过率：X/Y
+lint 状态：通过/失败（列出失败项）
+代码审查：发现 X 个缺陷已全部修复
+遗留问题：无 或 列出具体问题
+```
 
 ---
 
@@ -336,7 +378,7 @@ Phase 3（N 个并行 worktree）  → review → ship 合并 → health
 - [ ] 执行前 `git branch -D fix/* enhance/*` + `git worktree prune` + `rm -rf ../worktrees/*`
 - [ ] commit message 必须包含 `Skill:` 标签
 - [ ] 每个 agent 完成后用 `git log --oneline && git branch --show-current` 验证分支
-- [ ] 先跑 1 个 agent 验证流程再跑 5 个并行
+- [ ] 先跑 1 个 agent 验证流程再跑 N 个并行
 
 ---
 
