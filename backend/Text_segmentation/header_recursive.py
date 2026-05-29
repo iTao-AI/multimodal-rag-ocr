@@ -287,7 +287,7 @@ def stitch_chunks_with_headers(
             prev["is_table_like"] = prev.get("is_table_like") and curr.get("is_table_like")
             # 合并标题路径（取并集）
             if "headers" in curr:
-                prev["headers"] = list(set(prev.get("headers", []) + curr["headers"]))
+                prev["headers"] = list(dict.fromkeys(prev.get("headers", []) + curr["headers"]))
         else:
             stitched.append(curr)
     
