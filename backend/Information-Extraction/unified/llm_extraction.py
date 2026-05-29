@@ -9,10 +9,13 @@ import aiohttp # type: ignore
 import json
 from pathlib import Path
 import os
+import logging
 from urllib.parse import urlparse
 from dotenv import load_dotenv # type: ignore
 
 load_dotenv(override=True)
+
+logger = logging.getLogger(__name__)
 
 # 批处理配置
 PAGES_PER_REQUEST = 2
@@ -65,7 +68,7 @@ class PDFMultimodalExtractor:
         
         # 检测API类型
         self.api_type = self._detect_api_type()
-        print(f"检测到API类型: {self.api_type}")
+        logger.info("检测到API类型: %s", self.api_type)
         
         # 如果使用OpenAI SDK，初始化客户端
         if self.api_type == "openai_sdk":
@@ -75,10 +78,10 @@ class PDFMultimodalExtractor:
             else:
                 base_url = model_url
             self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-            print(f"  使用OpenAI SDK (base_url: {base_url})")
+            logger.info("  使用OpenAI SDK (base_url: %s)", base_url)
         else:
             self.openai_client = None
-            print(f"  使用HTTP客户端 (url: {model_url})")
+            logger.info("  使用HTTP客户端 (url: %s)", model_url)
         
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
@@ -205,17 +208,17 @@ class PDFMultimodalExtractor:
                 self.total_completion_tokens += completion_tokens
                 self.total_tokens += total_tokens
                 
-                print(f"  第{page_range}页 Token: 输入={prompt_tokens}, 输出={completion_tokens}, 总计={total_tokens}")
+                logger.info(f"  第{page_range}页 Token: 输入={prompt_tokens}, 输出={completion_tokens}, 总计={total_tokens}")
             
             content = response.choices[0].message.content
             
             api_time = time.time() - start_time
-            print(f"  第{page_range}页 耗时: {api_time:.2f}秒")
+            logger.info(f"  第{page_range}页 耗时: {api_time:.2f}秒")
             
             return self._parse_response_content(content, page_nums)
             
         except Exception as e:
-            print(f"❌ OpenAI SDK调用失败: {type(e).__name__}: {e}")
+            logger.error(f"❌ OpenAI SDK调用失败: {type(e).__name__}: {e}")
             raise
     
     async def call_multimodal_api_qwen(
@@ -263,10 +266,10 @@ class PDFMultimodalExtractor:
         }
         
         payload_size = len(json.dumps(payload))
-        print(f"  请求体大小: {payload_size / 1024 / 1024:.2f} MB")
+        logger.info(f"  请求体大小: {payload_size / 1024 / 1024:.2f} MB")
 
         request_url = self._get_request_url()
-        print(f"  请求URL: {request_url}")
+        logger.info(f"  请求URL: {request_url}")
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -280,8 +283,8 @@ class PDFMultimodalExtractor:
 
                     if response.status != 200:
                         display_text = response_text[:1000]
-                        print(f"❌ API错误: {response.status}")
-                        print(f"错误详情: {display_text}")
+                        logger.error(f"❌ API错误: {response.status}")
+                        logger.error(f"错误详情: {display_text}")
                         raise Exception(f"API调用失败: {response.status} - {display_text}")
 
                     result = await response.json()
@@ -297,21 +300,21 @@ class PDFMultimodalExtractor:
                         self.total_completion_tokens += completion_tokens
                         self.total_tokens += total_tokens
 
-                        print(f"  第{page_range}页 Token: 输入={prompt_tokens}, 输出={completion_tokens}, 总计={total_tokens}")
+                        logger.info(f"  第{page_range}页 Token: 输入={prompt_tokens}, 输出={completion_tokens}, 总计={total_tokens}")
 
                     # 提取响应内容
                     content = result['choices'][0]['message']['content']
 
                     api_time = time.time() - start_time
-                    print(f"  第{page_range}页 耗时: {api_time:.2f}秒")
+                    logger.info(f"  第{page_range}页 耗时: {api_time:.2f}秒")
 
                     return self._parse_response_content(content, page_nums)
                     
         except asyncio.TimeoutError:
-            print(f"❌ 请求超时（页面 {page_range}）")
+            logger.error(f"❌ 请求超时（页面 {page_range}）")
             raise
         except Exception as e:
-            print(f"❌ 通义千问API调用异常: {type(e).__name__}: {e}")
+            logger.error(f"❌ 通义千问API调用异常: {type(e).__name__}: {e}")
             raise
     
     async def call_multimodal_api_claude(
@@ -356,8 +359,8 @@ class PDFMultimodalExtractor:
         }
         
         payload_size = len(json.dumps(payload))
-        print(f"  请求体大小: {payload_size / 1024 / 1024:.2f} MB")
-        print(f"  请求URL: {self.model_url}")
+        logger.info(f"  请求体大小: {payload_size / 1024 / 1024:.2f} MB")
+        logger.info(f"  请求URL: {self.model_url}")
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -371,8 +374,8 @@ class PDFMultimodalExtractor:
 
                     if response.status != 200:
                         display_text = response_text[:1000]
-                        print(f"❌ API错误: {response.status}")
-                        print(f"错误详情: {display_text}")
+                        logger.error(f"❌ API错误: {response.status}")
+                        logger.error(f"错误详情: {display_text}")
                         raise Exception(f"API调用失败: {response.status} - {display_text}")
 
                     result = await response.json()
@@ -388,21 +391,21 @@ class PDFMultimodalExtractor:
                         self.total_completion_tokens += completion_tokens
                         self.total_tokens += total_tokens
 
-                        print(f"  第{page_range}页 Token: 输入={prompt_tokens}, 输出={completion_tokens}, 总计={total_tokens}")
+                        logger.info(f"  第{page_range}页 Token: 输入={prompt_tokens}, 输出={completion_tokens}, 总计={total_tokens}")
 
                     # 提取响应内容
                     content = result['content'][0]['text']
 
                     api_time = time.time() - start_time
-                    print(f"  第{page_range}页 耗时: {api_time:.2f}秒")
+                    logger.info(f"  第{page_range}页 耗时: {api_time:.2f}秒")
 
                     return self._parse_response_content(content, page_nums)
                     
         except asyncio.TimeoutError:
-            print(f"❌ 请求超时（页面 {page_range}）")
+            logger.error(f"❌ 请求超时（页面 {page_range}）")
             raise
         except Exception as e:
-            print(f"❌ Claude API调用异常: {type(e).__name__}: {e}")
+            logger.error(f"❌ Claude API调用异常: {type(e).__name__}: {e}")
             raise
     
     def _get_extraction_prompt(self, page_range: str, total_pages: int, page_nums: List[int]) -> str:
@@ -546,8 +549,8 @@ class PDFMultimodalExtractor:
                 if first_brace > 0:
                     prefix = content[:first_brace].strip()
                     if prefix:
-                        print(f"  ⚠️  检测到JSON前有额外内容（{len(prefix)}字符），已自动移除")
-                        print(f"     前缀预览: {prefix[:100]}...")
+                        logger.warning(f"  ⚠️  检测到JSON前有额外内容（{len(prefix)}字符），已自动移除")
+                        logger.info(f"     前缀预览: {prefix[:100]}...")
                 
                 content = json_content
             
@@ -556,7 +559,7 @@ class PDFMultimodalExtractor:
             # 验证和修正page_num
             pages_data = parsed.get('pages', [])
             len_pages_data = len(pages_data)
-            print(f"  📋 收到 {len_pages_data} 个页面数据，预期页码: {page_nums}")
+            logger.info(f"  📋 收到 {len_pages_data} 个页面数据，预期页码: {page_nums}")
             if len_pages_data == 0:
                 pass
             
@@ -565,10 +568,10 @@ class PDFMultimodalExtractor:
                 expected_page_num = page_nums[i] if i < len(page_nums) else None
                 
                 if returned_page_num != expected_page_num:
-                    print(f"  ⚠️  页面{i+1}: 大模型返回page_num={returned_page_num}, 预期={expected_page_num}, 已自动修正")
+                    logger.warning(f"  ⚠️  页面{i+1}: 大模型返回page_num={returned_page_num}, 预期={expected_page_num}, 已自动修正")
                     page_data['page_num'] = expected_page_num
                 else:
-                    print(f"  ✓ 页面{i+1}: page_num={returned_page_num} 匹配正确")
+                    logger.info(f"  ✓ 页面{i+1}: page_num={returned_page_num} 匹配正确")
                 
                 # 二次验证：检查markdown开头是否有页码标题
                 markdown = page_data.get('markdown', '')
@@ -579,20 +582,20 @@ class PDFMultimodalExtractor:
                     if match:
                         markdown_page_num = int(match.group(1))
                         if markdown_page_num != expected_page_num:
-                            print(f"  ⚠️  Markdown标题显示第{markdown_page_num}页，但预期是第{expected_page_num}页")
+                            logger.warning(f"  ⚠️  Markdown标题显示第{markdown_page_num}页，但预期是第{expected_page_num}页")
             
             # 验证tables、formulas、images的page字段
             for table in parsed.get('tables', []):
                 if table.get('page') not in page_nums:
-                    print(f"  ⚠️  表格 {table.get('id')} 的page={table.get('page')}不在预期页码中")
+                    logger.warning(f"  ⚠️  表格 {table.get('id')} 的page={table.get('page')}不在预期页码中")
             
             for formula in parsed.get('formulas', []):
                 if formula.get('page') not in page_nums:
-                    print(f"  ⚠️  公式 {formula.get('id')} 的page={formula.get('page')}不在预期页码中")
+                    logger.warning(f"  ⚠️  公式 {formula.get('id')} 的page={formula.get('page')}不在预期页码中")
             
             for image in parsed.get('images', []):
                 if image.get('page') not in page_nums:
-                    print(f"  ⚠️  图片 {image.get('id')} 的page={image.get('page')}不在预期页码中")
+                    logger.warning(f"  ⚠️  图片 {image.get('id')} 的page={image.get('page')}不在预期页码中")
             
             # 🔥 关键修复：添加 per_page_results 字段
             return {
@@ -603,13 +606,13 @@ class PDFMultimodalExtractor:
             }
             
         except json.JSONDecodeError as e:
-            print(f"⚠️  JSON解析失败: {e}")
-            print(f"原始内容前200字符: {content[:200]}...")
+            logger.error(f"⚠️  JSON解析失败: {e}")
+            logger.info(f"原始内容前200字符: {content[:200]}...")
             
             # 检查是否是模型拒绝提取的回复
             refusal_keywords = ["unable to", "cannot", "can't", "sorry", "i'm not able"]
             if any(keyword in content.lower() for keyword in refusal_keywords):
-                print(f"⚠️  模型拒绝提取内容，页面 {page_nums} 将标记为处理失败")
+                logger.error(f"⚠️  模型拒绝提取内容，页面 {page_nums} 将标记为处理失败")
                 return {
                     "per_page_results": [{  # 修改这里
                         "page_num": num,
@@ -622,7 +625,7 @@ class PDFMultimodalExtractor:
                 }
             
             # 如果不是拒绝，尝试将原始内容作为markdown
-            print(f"⚠️  将原始响应作为markdown内容保存")
+            logger.warning(f"⚠️  将原始响应作为markdown内容保存")
             return {
                 "per_page_results": [{  # 修改这里
                     "page_num": num,
@@ -663,17 +666,17 @@ class PDFMultimodalExtractor:
         
         # 优先使用原始文件名，否则从路径提取
         filename = original_filename or Path(pdf_path).name
-        print(f"filename: {filename}")
+        logger.info(f"filename: {filename}")
         
-        print(f"开始处理PDF: {pdf_path}")
-        print("="*60)
+        logger.info(f"开始处理PDF: {pdf_path}")
+        logger.info("="*60)
         
         # PDF转图片
         convert_start = time.time()
         images = self.pdf_to_images(pdf_path)
         self.pdf_convert_time = time.time() - convert_start
         total_pages = len(images)
-        print(f"✓ PDF转换完成: {total_pages} 页 (耗时: {self.pdf_convert_time:.2f}秒)")
+        logger.info(f"✓ PDF转换完成: {total_pages} 页 (耗时: {self.pdf_convert_time:.2f}秒)")
         
         # 批量处理页面
         per_page_results = []
@@ -722,14 +725,14 @@ class PDFMultimodalExtractor:
             "total_time": round(self.total_time, 2)
         }
         
-        print("\n" + "="*60)
-        print("✓ 提取完成")
-        print(f"  总页数: {total_pages}")
-        print(f"  表格数: {len(all_tables)}")
-        print(f"  公式数: {len(all_formulas)}")
-        print(f"  Token使用: {self.total_tokens:,} (提示: {self.total_prompt_tokens:,}, 完成: {self.total_completion_tokens:,})")
-        print(f"  耗时: PDF转换 {self.pdf_convert_time:.2f}s + API调用 {self.api_call_time:.2f}s = 总计 {self.total_time:.2f}s")
-        print("="*60 + "\n")
+        logger.info("\n" + "="*60)
+        logger.info("✓ 提取完成")
+        logger.info(f"  总页数: {total_pages}")
+        logger.info(f"  表格数: {len(all_tables)}")
+        logger.info(f"  公式数: {len(all_formulas)}")
+        logger.info(f"  Token使用: {self.total_tokens:,} (提示: {self.total_prompt_tokens:,}, 完成: {self.total_completion_tokens:,})")
+        logger.info(f"  耗时: PDF转换 {self.pdf_convert_time:.2f}s + API调用 {self.api_call_time:.2f}s = 总计 {self.total_time:.2f}s")
+        logger.info("="*60 + "\n")
         
         return ExtractionResult(
             filename=filename,
@@ -753,7 +756,7 @@ class PDFMultimodalExtractor:
         images_path.mkdir(exist_ok=True)
         
         # 1. 保存每页图片
-        print(f"\n💾 保存页面图片...")
+        logger.info(f"\n💾 保存页面图片...")
         for idx, image in enumerate(result.page_images):
             page_num = idx + 1
             image_filename = f"page_{page_num:03d}.jpg"
@@ -763,10 +766,10 @@ class PDFMultimodalExtractor:
             if image.mode == 'RGBA':
                 image = image.convert('RGB')
             image.save(image_path, format='JPEG', quality=95)
-            print(f"  ✓ 第{page_num}页图片: {image_filename}")
+            logger.info(f"  ✓ 第{page_num}页图片: {image_filename}")
         
         # 2. 保存每页识别结果
-        print(f"\n💾 保存每页识别结果...")
+        logger.info(f"\n💾 保存每页识别结果...")
         # 为每页结果添加图片文件名
         for page_result in result.per_page_results:
             page_num = page_result['page_num']
@@ -774,22 +777,22 @@ class PDFMultimodalExtractor:
         
         with open(output_path / "per_page_results.json", 'w', encoding='utf-8') as f:
             json.dump(result.per_page_results, f, ensure_ascii=False, indent=2)
-        print(f"  ✓ 每页结果: per_page_results.json")
+        logger.info(f"  ✓ 每页结果: per_page_results.json")
         
         # 3. 保存完整markdown
         with open(output_path / "full_content.md", 'w', encoding='utf-8') as f:
             f.write(result.markdown_content)
-        print(f"  ✓ 完整内容: full_content.md")
+        logger.info(f"  ✓ 完整内容: full_content.md")
         
         # 4. 保存所有表格
         with open(output_path / "tables.json", 'w', encoding='utf-8') as f:
             json.dump(result.tables, f, ensure_ascii=False, indent=2)
-        print(f"  ✓ 所有表格: tables.json")
+        logger.info(f"  ✓ 所有表格: tables.json")
         
         # 5. 保存所有公式
         with open(output_path / "formulas.json", 'w', encoding='utf-8') as f:
             json.dump(result.formulas, f, ensure_ascii=False, indent=2)
-        print(f"  ✓ 所有公式: formulas.json")
+        logger.info(f"  ✓ 所有公式: formulas.json")
         
         # 6. 保存元数据
         complete_metadata = {
@@ -799,11 +802,11 @@ class PDFMultimodalExtractor:
         }
         with open(output_path / "metadata.json", 'w', encoding='utf-8') as f:
             json.dump(complete_metadata, f, ensure_ascii=False, indent=2)
-        print(f"  ✓ 元数据: metadata.json")
+        logger.info(f"  ✓ 元数据: metadata.json")
         
-        print(f"\n✅ 所有结果已保存到: {output_path.absolute()}")
-        print(f"   - 页面图片: {len(result.page_images)} 张")
-        print(f"   - 识别结果: {len(result.per_page_results)} 页")
+        logger.info(f"\n✅ 所有结果已保存到: {output_path.absolute()}")
+        logger.info(f"   - 页面图片: {len(result.page_images)} 张")
+        logger.info(f"   - 识别结果: {len(result.per_page_results)} 页")
 
 
 async def main(pdf_file, output_dir="output"):
@@ -816,9 +819,9 @@ async def main(pdf_file, output_dir="output"):
     result = await extractor.extract_from_pdf(pdf_file)
     extractor.save_results(result, output_dir=output_dir)
     
-    print("\n📝 内容预览 (前500字符):")
-    print(result.markdown_content[:500])
-    print("...")
+    logger.info("\n📝 内容预览 (前500字符):")
+    logger.info("内容预览: %s", result.markdown_content[:500])
+    logger.info("...")
 
 
 if __name__ == "__main__":
