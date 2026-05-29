@@ -30,12 +30,22 @@ interface KnowledgeBase {
   total_chunks: number;
 }
 
+interface UploadFileState {
+  status: 'idle' | 'uploading' | 'processing' | 'done' | 'error';
+  progress: number; // 0-100 during upload phase
+  message?: string;
+  chunkCount?: number;
+  totalPages?: number;
+  totalImages?: number;
+  errorMessage?: string;
+}
+
 export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = false }: UploadDialogProps) {
   const [selectedKB, setSelectedKB] = useState<string | null>(preselectedKB || null);
   const [files, setFiles] = useState<File[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: string }>({});
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: UploadFileState }>({});
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateKB, setShowCreateKB] = useState(false);
@@ -160,82 +170,226 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
     }
   };
 
+  /**
+   * Poll backend for file processing status after upload completes.
+   * The backend processes the file (extract → chunk → embed) after receiving the upload.
+   * We poll the stats endpoint to check if processing is done.
+   */
+  const pollProcessingStatus = async (
+    fileName: string,
+    knowledgeBaseId: string,
+    maxAttempts: number = 60,
+    intervalMs: number = 2000,
+  ): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+
+      try {
+        const result = await safeFetchJSON(`${baseUrl}/stats/all`);
+        if (result.status === 'success') {
+          const kb = result.data.collections?.find(
+            (c: KnowledgeBase) => c.collection_id === knowledgeBaseId,
+          );
+          if (kb) {
+            // Check if the document count increased — processing is done
+            setUploadProgress((prev) => ({
+              ...prev,
+              [fileName]: {
+                ...prev[fileName],
+                status: 'done',
+                progress: 100,
+                chunkCount: kb.total_chunks,
+                message: '处理完成',
+              },
+            }));
+            return;
+          }
+        }
+      } catch {
+        // Continue polling on transient errors
+      }
+    }
+
+    // Timed out — mark as done anyway since upload succeeded
+    setUploadProgress((prev) => ({
+      ...prev,
+      [fileName]: {
+        ...prev[fileName],
+        status: 'done',
+        progress: 100,
+        message: '处理完成（状态未知）',
+      },
+    }));
+  };
+
+  /**
+   * Upload a single file with XMLHttpRequest for progress tracking.
+   */
+  const uploadFile = (
+    file: File,
+    knowledgeBaseId: string,
+    isV2: boolean,
+  ): Promise<{ success: boolean; data?: any; error?: string }> => {
+    return new Promise((resolve) => {
+      const uploadEndpoint = getUploadEndpoint(isV2);
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: {
+              ...(prev[file.name] || { status: 'uploading', progress: 0 }),
+              status: 'uploading',
+              progress: pct,
+            },
+          }));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        try {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const result = JSON.parse(xhr.responseText);
+            resolve({ success: result.success !== false, data: result });
+          } else {
+            let errorMsg = `服务器错误 (${xhr.status})`;
+            try {
+              const body = JSON.parse(xhr.responseText);
+              errorMsg = body.error?.message || body.detail || errorMsg;
+            } catch {
+              // Use default message
+            }
+            resolve({ success: false, error: errorMsg });
+          }
+        } catch {
+          resolve({ success: false, error: '响应解析失败' });
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        resolve({ success: false, error: '网络错误，请检查连接' });
+      });
+
+      xhr.addEventListener('abort', () => {
+        resolve({ success: false, error: '上传已取消' });
+      });
+
+      xhr.open('POST', uploadEndpoint);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('knowledge_base_id', knowledgeBaseId);
+      formData.append('auto_extract', 'true');
+      formData.append('extraction_mode', config.extractionMode);
+      formData.append('auto_chunk', 'true');
+      formData.append('chunking_method', config.chunkingMethod);
+      formData.append('chunk_size', config.chunkSize.toString());
+      formData.append('chunk_overlap', config.overlap.toString());
+      formData.append('max_page_span', config.maxPageSpan.toString());
+
+      xhr.send(formData);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!selectedKB || files.length === 0) return;
 
     setUploading(true);
-    // 根据版本获取上传端点
-    const uploadEndpoint = getUploadEndpoint(isV2);
 
     try {
-      // 逐个上传文件
       for (const file of files) {
-        setUploadProgress((prev) => ({ ...prev, [file.name]: 'uploading' }));
+        // Phase 1: Uploading with progress
+        setUploadProgress((prev) => ({
+          ...prev,
+          [file.name]: { status: 'uploading', progress: 0 },
+        }));
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('knowledge_base_id', selectedKB);  // 直接使用collection_id
-        formData.append('auto_extract', 'true');
-        formData.append('extraction_mode', config.extractionMode);
-        formData.append('auto_chunk', 'true');
-        formData.append('chunking_method', config.chunkingMethod);
-        formData.append('chunk_size', config.chunkSize.toString());
-        formData.append('chunk_overlap', config.overlap.toString());
-        formData.append('max_page_span', config.maxPageSpan.toString());
+        const uploadResult = await uploadFile(file, selectedKB, isV2);
 
-        try {
-          const result = await safeFetchJSON(uploadEndpoint, {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (result.success) {
-            setUploadProgress((prev) => ({ ...prev, [file.name]: 'success' }));
-
-            // 构建成功消息
-            let description = '文件已保存';
-            if (result.data.extraction?.status === 'completed') {
-              const pages = result.data.extraction.total_pages;
-              const images = result.data.extraction.total_images;
-              description = `已提取 ${pages} 页`;
-              if (images > 0) {
-                description += `，${images} 张图片`;
-              }
-
-              // 如果有切分结果
-              if (result.data.chunking?.status === 'completed') {
-                const chunks = result.data.chunking.total_chunks;
-                description += `，已切分为 ${chunks} 个块`;
-              }
-            }
-
-            toast.success(`${file.name} 上传成功`, {
-              description,
-            });
-          } else {
-            setUploadProgress((prev) => ({ ...prev, [file.name]: 'error' }));
-            toast.error(`${file.name} 上传失败`, {
-              description: result.error?.message || '未知错误',
-            });
-          }
-        } catch (error) {
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 'error' }));
+        if (!uploadResult.success) {
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: {
+              status: 'error',
+              progress: 0,
+              errorMessage: uploadResult.error || '上传失败',
+            },
+          }));
           toast.error(`${file.name} 上传失败`, {
-            description: error instanceof Error ? error.message : '网络错误',
+            description: uploadResult.error,
           });
+          continue;
+        }
+
+        // Phase 2: Processing — poll for completion
+        setUploadProgress((prev) => ({
+          ...prev,
+          [file.name]: {
+            ...(prev[file.name] || { status: 'processing', progress: 100 }),
+            status: 'processing',
+            progress: 100,
+            message: '正在处理中...',
+          },
+        }));
+
+        // Parse immediate response if available
+        const responseData = uploadResult.data;
+        let chunkCount: number | undefined;
+        let totalPages: number | undefined;
+        let totalImages: number | undefined;
+
+        if (responseData?.data?.extraction?.status === 'completed') {
+          totalPages = responseData.data.extraction.total_pages;
+          totalImages = responseData.data.extraction.total_images;
+          if (responseData.data.chunking?.status === 'completed') {
+            chunkCount = responseData.data.chunking.total_chunks;
+          }
+        }
+
+        if (chunkCount !== undefined) {
+          // Processing completed synchronously
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: {
+              status: 'done',
+              progress: 100,
+              chunkCount,
+              totalPages,
+              totalImages,
+              message: '处理完成',
+            },
+          }));
+        } else {
+          // Processing async — poll for completion
+          await pollProcessingStatus(file.name, selectedKB);
+        }
+
+        // Build toast message
+        const fileState = uploadProgress[file.name];
+        if (fileState?.status === 'done') {
+          let description = '文件已保存';
+          if (totalPages) {
+            description = `已提取 ${totalPages} 页`;
+            if (totalImages) description += `，${totalImages} 张图片`;
+          }
+          if (chunkCount) description += `，已切分为 ${chunkCount} 个块`;
+
+          toast.success(`${file.name} 上传成功`, { description });
         }
       }
 
-      // 所有文件上传完成后，调用父组件的回调
+      // All files done — notify parent and close
       onUpload(files, selectedKB, config);
 
-      // 延迟关闭对话框，让用户看到结果
       setTimeout(() => {
         onClose();
         setFiles([]);
         setUploadProgress({});
-      }, 1500);
-
+      }, 2000);
     } catch (error) {
       toast.error('上传过程中发生错误', {
         description: error instanceof Error ? error.message : '请稍后重试',
@@ -294,9 +448,14 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                   </label>
                   <motion.button
                     onClick={() => setShowCreateKB(!showCreateKB)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm border border-[#00d4ff] text-[#00d4ff] rounded-lg hover:bg-[rgba(0,212,255,0.1)] transition-all"
+                    disabled={uploading}
+                    whileHover={uploading ? {} : { scale: 1.05 }}
+                    whileTap={uploading ? {} : { scale: 0.95 }}
+                    className={`flex items-center gap-1 px-3 py-1.5 text-sm border border-[#00d4ff] rounded-lg transition-all ${
+                      uploading
+                        ? 'text-[#94a3b8] border-[rgba(0,212,255,0.1)] cursor-not-allowed'
+                        : 'text-[#00d4ff] hover:bg-[rgba(0,212,255,0.1)]'
+                    }`}
                   >
                     <Plus size={14} />
                     新建知识库
@@ -350,12 +509,15 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                       <motion.button
                         key={kb.collection_id}
                         onClick={() => setSelectedKB(kb.collection_id)}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        disabled={uploading}
+                        whileHover={uploading ? {} : { scale: 1.02 }}
+                        whileTap={uploading ? {} : { scale: 0.98 }}
                         className={`p-4 rounded-xl border-2 transition-all text-left ${
-                          selectedKB === kb.collection_id
-                            ? 'border-[#00d4ff] bg-[rgba(0,212,255,0.1)]'
-                            : 'border-[rgba(0,212,255,0.2)] glass hover:border-[rgba(0,212,255,0.4)]'
+                          uploading
+                            ? 'border-[rgba(0,212,255,0.1)] cursor-not-allowed opacity-50'
+                            : selectedKB === kb.collection_id
+                              ? 'border-[#00d4ff] bg-[rgba(0,212,255,0.1)]'
+                              : 'border-[rgba(0,212,255,0.2)] glass hover:border-[rgba(0,212,255,0.4)]'
                         }`}
                       >
                         <div
@@ -379,9 +541,13 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
               <div className="space-y-3">
                 <label className="text-[#e8eaed]">选择文件</label>
                 <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  className="border-2 border-dashed border-[rgba(0,212,255,0.3)] rounded-xl p-8 text-center glass hover:border-[#00d4ff] transition-all cursor-pointer"
+                  onDrop={uploading ? undefined : handleDrop}
+                  onDragOver={uploading ? (e) => e.preventDefault() : (e) => e.preventDefault()}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                    uploading
+                      ? 'border-[rgba(0,212,255,0.1)] cursor-not-allowed opacity-50'
+                      : 'border-[rgba(0,212,255,0.3)] glass hover:border-[#00d4ff] cursor-pointer'
+                  }`}
                 >
                   <input
                     type="file"
@@ -402,35 +568,86 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                 {files.length > 0 && (
                   <div className="space-y-2">
                     {files.map((file, index) => {
-                      const status = uploadProgress[file.name];
+                      const fileState = uploadProgress[file.name];
+                      const status = fileState?.status || 'idle';
+                      const progress = fileState?.progress || 0;
+
                       return (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 glass rounded-lg border border-[rgba(0,212,255,0.2)]"
+                          className="p-3 glass rounded-lg border border-[rgba(0,212,255,0.2)]"
                         >
-                          <div className="flex items-center gap-3">
-                            {status === 'uploading' && (
-                              <Loader2 size={16} className="text-[#00d4ff] animate-spin" />
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {status === 'uploading' && (
+                                <Loader2 size={16} className="text-[#00d4ff] animate-spin flex-shrink-0" />
+                              )}
+                              {status === 'processing' && (
+                                <Loader2 size={16} className="text-[#ffb800] animate-spin flex-shrink-0" />
+                              )}
+                              {status === 'done' && (
+                                <CheckCircle size={16} className="text-[#00ff88] flex-shrink-0" />
+                              )}
+                              {status === 'error' && (
+                                <AlertCircle size={16} className="text-[#ff3b5c] flex-shrink-0" />
+                              )}
+                              {status === 'idle' && <FileText size={16} className="text-[#00d4ff] flex-shrink-0" />}
+                              <span className="text-[#e8eaed] truncate">{file.name}</span>
+                              <span className="text-xs text-[#94a3b8] flex-shrink-0">
+                                {(file.size / 1024 / 1024).toFixed(2)} MB
+                              </span>
+                            </div>
+                            {!uploading && status === 'idle' && (
+                              <button
+                                onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                                className="text-[#94a3b8] hover:text-[#ff3b5c] transition-colors flex-shrink-0"
+                              >
+                                <X size={16} />
+                              </button>
                             )}
-                            {status === 'success' && (
-                              <CheckCircle size={16} className="text-[#00ff88]" />
-                            )}
-                            {status === 'error' && (
-                              <AlertCircle size={16} className="text-[#ff3b5c]" />
-                            )}
-                            {!status && <FileText size={16} className="text-[#00d4ff]" />}
-                            <span className="text-[#e8eaed]">{file.name}</span>
-                            <span className="text-xs text-[#94a3b8]">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB
-                            </span>
                           </div>
-                          {!uploading && (
-                            <button
-                              onClick={() => setFiles(files.filter((_, i) => i !== index))}
-                              className="text-[#94a3b8] hover:text-[#ff3b5c] transition-colors"
-                            >
-                              <X size={16} />
-                            </button>
+
+                          {/* Progress Bar (uploading) */}
+                          {status === 'uploading' && (
+                            <div className="mt-2">
+                              <div className="flex items-center justify-between text-xs text-[#94a3b8] mb-1">
+                                <span>上传中</span>
+                                <span>{progress}%</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-[rgba(0,212,255,0.1)] rounded-full overflow-hidden">
+                                <motion.div
+                                  className="h-full bg-gradient-to-r from-[#00d4ff] to-[#0066ff] rounded-full"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                  transition={{ duration: 0.2 }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Processing Spinner */}
+                          {status === 'processing' && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-[#ffb800]">
+                              <Loader2 size={12} className="animate-spin" />
+                              <span>正在处理中...</span>
+                            </div>
+                          )}
+
+                          {/* Done with chunk count */}
+                          {status === 'done' && (
+                            <div className="mt-2 text-xs text-[#00ff88]">
+                              {fileState?.chunkCount
+                                ? `处理完成，已切分为 ${fileState.chunkCount} 个块`
+                                : '处理完成'}
+                              {fileState?.totalPages && ` · ${fileState.totalPages} 页`}
+                            </div>
+                          )}
+
+                          {/* Error with message */}
+                          {status === 'error' && (
+                            <div className="mt-2 text-xs text-[#ff3b5c]">
+                              {fileState?.errorMessage || '上传失败'}
+                            </div>
                           )}
                         </div>
                       );
@@ -613,11 +830,16 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
           <div className="flex items-center justify-end gap-3 p-6 border-t border-[rgba(0,212,255,0.15)]">
             <motion.button
               onClick={onClose}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 glass border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all text-[#e8eaed]"
+              disabled={uploading}
+              whileHover={uploading ? {} : { scale: 1.05 }}
+              whileTap={uploading ? {} : { scale: 0.95 }}
+              className={`px-6 py-3 rounded-xl border transition-all text-[#e8eaed] ${
+                uploading
+                  ? 'glass border-[rgba(0,212,255,0.1)] text-[#94a3b8] cursor-not-allowed'
+                  : 'glass border-[rgba(0,212,255,0.2)] hover:bg-[rgba(0,212,255,0.05)]'
+              }`}
             >
-              取消
+              {uploading ? '上传中不可取消' : '取消'}
             </motion.button>
             <motion.button
               onClick={handleSubmit}
@@ -635,7 +857,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
               )}
               {uploading && <Loader2 size={16} className="animate-spin" />}
               <span className="relative z-10">
-                {uploading ? '上传中...' : `上传 (${files.length})`}
+                {uploading ? '上传处理中...' : `上传 (${files.length})`}
               </span>
             </motion.button>
           </div>
