@@ -627,10 +627,10 @@ class MilvusRAGService:
             # 执行查询
             results = collection.query(
                 expr=expr,
-                limit=top_k,
                 output_fields=["chunk_text", "filename", "file_id", "metadata", "created_at"]
             )
-            
+            results = results[:top_k]
+
             # 格式化结果
             formatted_results = []
             for result in results:
@@ -722,9 +722,9 @@ class MilvusRAGService:
                 # 查询所有记录的filename字段
                 results = collection.query(
                     expr="id > 0",
-                    output_fields=["filename", "created_at"],
-                    limit=16384  # Milvus默认最大限制
+                    output_fields=["filename", "created_at"]
                 )
+                results = results[:16384]
 
                 # 统计唯一文件名
                 unique_filenames = set()
@@ -782,9 +782,9 @@ class MilvusRAGService:
             try:
                 results = collection.query(
                     expr="id > 0",
-                    output_fields=["filename", "file_id", "metadata", "created_at"],
-                    limit=16384
+                    output_fields=["filename", "file_id", "metadata", "created_at"]
                 )
+                results = results[:16384]
 
                 print(f"\n📊 查询知识库文档列表: {collection_id}")
                 print(f"  - 总记录数: {len(results)}")
