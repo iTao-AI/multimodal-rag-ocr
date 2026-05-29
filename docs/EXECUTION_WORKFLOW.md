@@ -48,6 +48,12 @@
 - [ ] 当前分支为 `main`，工作区干净（`git status` 无未提交变更）
 - [ ] 核心 Skills 已确认可用（见上方清单）
 - [ ] 调用 `/health` 记录 baseline 质量分数（用于对比 Phase 后的质量变化）
+- [ ] 清理旧 worktree 和旧分支（如果之前跑过相同 Phase）：
+  ```bash
+  git worktree prune
+  git branch -D fix/* enhance/*  # 删除旧分支，确认无未合并变更
+  rm -rf ../worktrees/*
+  ```
 
 ---
 
@@ -137,22 +143,31 @@ Phase 的 worktree 命名规则：
 
 - 每个 Task 完成后立即 commit
 - **必须在当前 worktree 分支上 commit，严禁切换到 main 分支操作**
-- commit 前执行 `git branch --show-current` 确认当前分支名，如果不是 worktree 分支则停止并报告
+- commit 前必须执行 `git branch --show-current` 确认当前分支名
 - 只 add 该 Task 涉及的文件，严禁 `git add -A`
-- commit message 必须严格使用以下 PR Body 格式，不可省略任何段落：
+- commit message 必须严格使用以下 PR Body 模板，每个段落都必须有实际内容：
 
-格式：`<type>: <description> (#PRD缺陷编号)`
+示例：
+```
+fix: 替换 Embedding API 失败时的随机向量 fallback 为 503 异常 (#13)
 
-段落要求（全部必填，禁止留空）：
-  问题：现有痛点或缺失（1 句）
-  方案：核心变更（1-2 句）
-  价值：对用户或项目的收益（1 句；内部变更可省略）
-  技术细节：关键文件变更（每条 1 句）
-  Test plan：验证步骤清单（每条 1 句）
-  设计选型：仅当涉及技术决策时写，格式：方案 | 选择 | 理由
-  Breaking Changes：仅当有破坏性变更时写，说明影响和迁移方式
+问题：Embedding API 失败时插入 np.random.rand() 随机向量，永久污染知识库
+方案：改为抛出 HTTPException(503)，添加指数退避重试（1s→2s→4s，最多3次）
+价值：确保知识库数据完整性，不再插入脏数据
+
+技术细节：
+- milvus_api.py: generate_embedding() 和 generate_embeddings_batch() 的 except 块
+- 新增 call_with_retry() 工具函数
+
+Test plan:
+- pytest tests/test_embedding_pipeline.py 7/7 通过
+- 模拟 API 超时验证 503 返回
+```
 
 - type 只能是：fix（修复）, feat（新功能）, chore（清理）, test（测试）
+- **每个段落都不能留空或使用 "无"/"N/A" 代替**
+- commit message 中必须包含 `Skill:` 标签，注明已调用的 skill，例如：
+  `Skill: superpowers:test-driven-development, superpowers:verification-before-completion`
 
 ## Review Gate
 
@@ -203,9 +218,24 @@ Phase 的 worktree 命名规则：
    ```
    /ship
    ```
-   `/ship` 会自动创建 PR、跑 CI、等待审查后合并。merge commit 的 message 由 `/ship` 自动生成。
+   `/ship` 会自动创建 PR、跑 CI、等待审查后合并。
 
-6. **Phase 合并后质量检查**
+   **注意**：如果 `/ship` 不可用或项目为 solo 开发，手动合并：
+   ```bash
+   git checkout main
+   git merge <worktree-branch> --no-ff -m "<PR Body 格式>"
+   ```
+   手动合并的 commit message 同样使用 PR Body 格式。
+
+6. **清理 worktree**
+
+   合并后必须清理 worktree 目录和分支引用：
+   ```bash
+   git worktree remove ../worktrees/<worktree-name>
+   git worktree prune
+   ```
+
+7. **Phase 合并后质量检查**
 
    调用 `/health` 运行代码质量打分：
    ```
@@ -213,12 +243,7 @@ Phase 的 worktree 命名规则：
    ```
    对比执行前的 baseline 分数，记录质量趋势，追踪 Phase 进展。
 
-   可选：调用 `/retro` 做阶段回顾（仅限全部 Phase 完成后或每周末，非每个 Phase 后都跑）：
-   ```
-   /retro
-   ```
-
-7. **如果某个 worktree 失败**：修复后重新 commit，不合并有问题的部分
+8. **如果某个 worktree 失败**：修复后重新 commit，不合并有问题的部分
 
 ## 第四步：进入下一 Phase
 
@@ -286,10 +311,32 @@ Phase 3（N 个并行 worktree）  → review → ship 合并 → health
 - [ ] Plan 已完成且每个 Task 有精确文件路径和代码
 - [ ] 当前分支为 main，工作区干净
 - [ ] baseline 质量分数已记录（`/health`）
+- [ ] 旧 worktree 和旧分支已清理（`git worktree prune` + `rm -rf ../worktrees/*`）
 - [ ] conda 环境 `vlm_rag` 可用（Python 3.11）
 - [ ] 前端 `node_modules` 已安装
 - [ ] Milvus Docker 可启动（集成测试需要）
 - [ ] Subagent Prompt 模板已替换所有占位符
+
+---
+
+## Phase 1 运行经验（Lessons Learned）
+
+### 本次踩坑记录
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| worktree 创建失败 `fatal: branch already exists` | 上轮 run 后旧分支未删除 | 执行前先 `git branch -D fix/*` |
+| `rm -rf` 删除目录后 `git worktree list` 仍显示 | 只删目录没清理 git 内部引用 | 必须 `git worktree prune` |
+| 1A agent 把 commit 打到 main 而非 worktree 分支 | agent 可能意外 checkout main | prompt 中加硬性约束 + 事后 cherry-pick |
+| commit message 格式不统一 | 每个 agent 风格不同 | 给完整示例模板而非格式描述 |
+| TDD skill 和 verification skill 未实际调用 | agent "模拟"了流程而非真正加载 skill | commit message 必须包含 `Skill:` 标签 |
+
+### 下次执行必做项
+
+- [ ] 执行前 `git branch -D fix/* enhance/*` + `git worktree prune` + `rm -rf ../worktrees/*`
+- [ ] commit message 必须包含 `Skill:` 标签
+- [ ] 每个 agent 完成后用 `git log --oneline && git branch --show-current` 验证分支
+- [ ] 先跑 1 个 agent 验证流程再跑 5 个并行
 
 ---
 
