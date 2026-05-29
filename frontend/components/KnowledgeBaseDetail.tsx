@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { UploadDialog } from './UploadDialog';
 import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
 
 interface KnowledgeBaseDetailProps {
   collectionId: string;
@@ -129,6 +130,22 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
     console.log('Uploading files:', files, 'to KB:', kbId, 'with config:', config);
     // 上传完成后刷新文档列表
     fetchKBDetails();
+  };
+
+  const handleDeleteDocument = async (filename: string) => {
+    if (!confirm(`确定要删除文档 "${filename}" 吗？`)) return;
+    try {
+      await safeFetchJSON(`${config.milvusApiUrl}/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collection_name: collectionId, filename }),
+      });
+      toast.success(`已删除文档: ${filename}`);
+      fetchKBDetails();
+    } catch (error) {
+      console.error('删除文档失败:', error);
+      toast.error(`删除文档失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   if (loading) {
@@ -311,6 +328,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
                     查看
                   </motion.button>
                   <motion.button
+                    onClick={() => handleDeleteDocument(doc.filename)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="px-4 py-2 border border-[#ff3b5c] text-[#ff3b5c] rounded-xl hover:bg-[rgba(255,59,92,0.1)] transition-all"
