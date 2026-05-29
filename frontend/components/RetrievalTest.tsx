@@ -1,44 +1,73 @@
-import { Search, Download, Save, GitCompare, Eye, Sparkles } from 'lucide-react';
+import { Search, Download, Save, GitCompare, Eye, Sparkles, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { Slider } from './ui/slider';
+import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
+
+interface SearchResult {
+  id: number;
+  rank: number;
+  similarity: number;
+  rerank?: number;
+  source: string;
+  page: number;
+  content: string;
+}
 
 export function RetrievalTest() {
   const [query, setQuery] = useState('');
+  const [collectionName, setCollectionName] = useState('');
   const [topK, setTopK] = useState([5]);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.7);
   const [enableRerank, setEnableRerank] = useState(true);
   const [searchMode, setSearchMode] = useState('hybrid');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<SearchResult[]>([]);
 
-  const results = [
-    {
-      id: 1,
-      rank: 1,
-      similarity: 0.94,
-      rerank: 0.96,
-      source: 'API_Reference_v2.pdf',
-      page: 3,
-      content: 'RAG systems combine the power of retrieval and generation to provide accurate and contextual responses. The system first retrieves relevant documents...',
-    },
-    {
-      id: 2,
-      rank: 2,
-      similarity: 0.89,
-      rerank: 0.92,
-      source: 'product_guide.pdf',
-      page: 12,
-      content: 'The main applications of RAG include question answering, document summarization, and knowledge base construction. It excels in scenarios...',
-    },
-    {
-      id: 3,
-      rank: 3,
-      similarity: 0.87,
-      rerank: 0.88,
-      source: 'technical_docs.pdf',
-      page: 7,
-      content: 'Retrieval-Augmented Generation enhances accuracy by grounding responses in actual documents. This approach reduces hallucinations...',
-    },
-  ];
+  const handleSearch = async () => {
+    if (!query.trim()) {
+      toast.warning('请输入搜索关键词');
+      return;
+    }
+    if (!collectionName.trim()) {
+      toast.warning('请输入知识库名称');
+      return;
+    }
+    setSearching(true);
+    setResults([]);
+    try {
+      const data = await safeFetchJSON(`${config.milvusApiUrl}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection_name: collectionName.trim(),
+          query_text: query.trim(),
+          top_k: topK[0],
+        }),
+      });
+      if (data.status === 'success' && data.results) {
+        const mappedResults: SearchResult[] = data.results.map((r: any, i: number) => ({
+          id: i + 1,
+          rank: i + 1,
+          similarity: r.score || 0,
+          source: r.filename || '未知',
+          page: r.metadata?.page_start || 0,
+          content: r.chunk_text?.slice(0, 200) || '',
+        }));
+        setResults(mappedResults);
+        toast.success(`检索完成，找到 ${mappedResults.length} 个结果`);
+      } else {
+        toast.error(data.detail || '检索失败');
+      }
+    } catch (error) {
+      console.error('检索失败:', error);
+      toast.error(`检索失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const highlightKeywords = (text: string, keywords: string[]) => {
     let highlighted = text;
@@ -57,6 +86,16 @@ export function RetrievalTest() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
+        <div className="mb-4">
+          <label className="text-sm text-[#94a3b8] mb-2 block">知识库名称</label>
+          <input
+            type="text"
+            value={collectionName}
+            onChange={(e) => setCollectionName(e.target.value)}
+            placeholder="例如: my_knowledge_base"
+            className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-[#e8eaed] placeholder-[#94a3b8] transition-all duration-300"
+          />
+        </div>
         <div className="flex gap-4">
           <div className="flex-1 relative">
             <textarea
@@ -66,14 +105,16 @@ export function RetrievalTest() {
               className="w-full min-h-[100px] px-5 py-4 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] focus:border-[#00d4ff] resize-none text-[#e8eaed] placeholder-[#94a3b8] transition-all duration-300"
             />
           </div>
-          <motion.button 
-            className="w-40 h-12 bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all flex items-center justify-center gap-2 self-end relative overflow-hidden group"
+          <motion.button
+            onClick={handleSearch}
+            disabled={searching}
+            className="w-40 h-12 bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all flex items-center justify-center gap-2 self-end relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 shimmer" />
-            <Search size={20} className="relative z-10" />
-            <span className="relative z-10">检索</span>
+            {searching ? <Loader2 size={20} className="animate-spin relative z-10" /> : <Search size={20} className="relative z-10" />}
+            <span className="relative z-10">{searching ? '检索中...' : '检索'}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -187,10 +228,16 @@ export function RetrievalTest() {
             检索结果
           </h3>
           <span className="text-[#94a3b8] px-4 py-2 rounded-lg glass-strong border border-[rgba(0,212,255,0.2)]">
-            (共{results.length}个，耗时<span className="text-[#00d4ff] mx-1">0.5s</span>)
+            (共{results.length}个)
           </span>
         </div>
 
+        {results.length === 0 ? (
+          <div className="text-center py-12 text-[#94a3b8]">
+            <Search size={48} className="mx-auto mb-4 opacity-50" />
+            <p>输入问题后点击"检索"按钮查看结果</p>
+          </div>
+        ) : (
         <div className="space-y-4">
           {results.map((result, index) => (
             <motion.div
@@ -229,7 +276,7 @@ export function RetrievalTest() {
                     <span className="text-sm text-[#00d4ff] w-14 text-right">{result.similarity}</span>
                   </div>
 
-                  {enableRerank && (
+                  {enableRerank && result.rerank !== undefined && (
                     <div className="flex items-center gap-4">
                       <span className="text-sm text-[#94a3b8] w-20">重排序:</span>
                       <div className="flex-1 h-2.5 bg-[rgba(15,18,53,0.8)] rounded-full overflow-hidden border border-[rgba(0,255,136,0.2)]">
@@ -281,6 +328,7 @@ export function RetrievalTest() {
             </motion.div>
           ))}
         </div>
+        )}
       </motion.div>
 
       {/* Bottom Action Bar */}

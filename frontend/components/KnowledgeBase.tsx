@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Toast } from './Toast';
 import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
 
 interface KnowledgeBaseProps {
   onViewDetail: (collectionId: string) => void;
@@ -47,8 +48,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
   const fetchKnowledgeBases = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${config.milvusApiUrl}/stats/all`);
-      const result = await response.json();
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/stats/all`);
 
       if (result.status === 'success') {
         const collections = result.data.collections || [];
@@ -139,10 +139,9 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
       // ✅ V2模式：自动添加 _v2 后缀
       const actualKbName = isV2 ? `${newKbName}_v2` : newKbName;
       
-      const response = await fetch(`${config.milvusApiUrl}/knowledge_base/create?display_name=${encodeURIComponent(actualKbName)}`, {
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/create?display_name=${encodeURIComponent(actualKbName)}`, {
         method: 'POST',
       });
-      const result = await response.json();
 
       if (result.status === 'success') {
         showToast(result.message, 'success');
@@ -165,14 +164,13 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
 
   const handleDeleteKB = async () => {
     try {
-      const response = await fetch(`${config.milvusApiUrl}/knowledge_base/delete`, {
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/delete`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ collection_id: deleteConfirm.id }),
       });
-      const result = await response.json();
 
       if (result.status === 'success') {
         showToast(result.message, 'success');

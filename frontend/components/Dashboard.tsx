@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { UploadDialog } from './UploadDialog';
 import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
 
 interface DashboardProps {
   onNavigate?: (view: string) => void;
@@ -21,8 +22,7 @@ export function Dashboard({ onNavigate, isV2 = false }: DashboardProps = {}) {
   // 从Milvus API获取统计数据
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${config.milvusApiUrl}/stats/all`);
-      const result = await response.json();
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/stats/all`);
 
       if (result.status === 'success') {
         const data = result.data;

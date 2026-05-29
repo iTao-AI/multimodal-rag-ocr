@@ -1246,11 +1246,11 @@ async def get_document_details(file_id: str):
         import os
         upload_base = Path(os.getenv(
             "UPLOAD_BASE_DIR",
-            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/uploads"
+            "./backend/output/uploads"
         ))
         extraction_base = Path(os.getenv(
             "EXTRACTION_RESULTS_DIR",
-            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/extraction_results"
+            "./backend/output/extraction_results"
         ))
         
         base_dirs_v1 = {
@@ -1421,11 +1421,11 @@ async def get_document_pdf(file_id: str):
         import os
         upload_base = Path(os.getenv(
             "UPLOAD_BASE_DIR",
-            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/uploads"
+            "./backend/output/uploads"
         ))
         extraction_base = Path(os.getenv(
             "EXTRACTION_RESULTS_DIR",
-            "/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG_OCR/backend/output/extraction_results"
+            "./backend/output/extraction_results"
         ))
         
         base_dirs_v1 = {
@@ -1517,7 +1517,10 @@ async def get_document_pdf(file_id: str):
 async def get_document_image(file_id: str, image_name: str):
     """获取文档提取的图片"""
     try:
-        base_extraction_dir = Path("/home/MuyuWorkSpace/01_TrafficProject/Multimodal_RAG/backend/output/extraction_results")
+        base_extraction_dir = Path(os.getenv(
+            "EXTRACTION_RESULTS_DIR",
+            "./backend/output/extraction_results"
+        ))
 
         # 图片路径
         image_path = base_extraction_dir / file_id / "images" / image_name
