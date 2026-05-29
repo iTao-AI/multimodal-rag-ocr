@@ -13,7 +13,7 @@ from typing import List, Dict, Any, Optional, AsyncIterable
 from datetime import datetime
 
 import uvicorn
-import requests
+import httpx
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -151,7 +151,9 @@ class ChatService:
             }
             
             print(f"正在从Milvus召回文档: {url}")
-            response = requests.post(url, json=payload, timeout=30)
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
             
             if response.status_code != 200:
                 raise HTTPException(
@@ -178,7 +180,7 @@ class ChatService:
             print(f"✓ 召回 {len(documents)} 个文档，过滤后保留 {len(filtered_docs)} 个")
             return filtered_docs
             
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             raise HTTPException(
                 status_code=500,
                 detail=f"调用Milvus API失败: {str(e)}"
