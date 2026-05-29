@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { getExtractionMethods, getUploadEndpoint, getDefaultExtractionMethod } from '../src/api/config';
 import { config } from '../src/config';
+import { safeFetchJSON } from '../src/api';
 
 interface UploadDialogProps {
   isOpen: boolean;
@@ -78,15 +79,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
       console.log('[UploadDialog] import.meta.env.VITE_MILVUS_API_URL:', import.meta.env.VITE_MILVUS_API_URL);
       console.log('[UploadDialog] baseUrl:', baseUrl);
 
-      const response = await fetch(apiUrl);
-      console.log('[UploadDialog] 响应状态:', response.status);
-      console.log('[UploadDialog] Content-Type:', response.headers.get('content-type'));
-
-      const text = await response.text();
-      console.log('[UploadDialog] 响应文本前100字符:', text.substring(0, 100));
-
-      const result = JSON.parse(text);
-      console.log('[UploadDialog] 解析成功:', result);
+      const result = await safeFetchJSON(apiUrl);
 
       if (result.status === 'success') {
         const collections = result.data.collections || [];
@@ -133,11 +126,10 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
       const actualKBName = isV2 ? `${newKBName}_v2` : newKBName;
       
       const baseUrl = config.milvusApiUrl || import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
-      const response = await fetch(
+      const result = await safeFetchJSON(
         `${baseUrl}/knowledge_base/create?display_name=${encodeURIComponent(actualKBName)}`,
         { method: 'POST' }
       );
-      const result = await response.json();
 
       if (result.status === 'success') {
         toast.success(result.message);
@@ -192,12 +184,10 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
         formData.append('max_page_span', config.maxPageSpan.toString());
 
         try {
-          const response = await fetch(uploadEndpoint, {
+          const result = await safeFetchJSON(uploadEndpoint, {
             method: 'POST',
             body: formData,
           });
-
-          const result = await response.json();
 
           if (result.success) {
             setUploadProgress((prev) => ({ ...prev, [file.name]: 'success' }));

@@ -1,6 +1,7 @@
 import { Eye, EyeOff, Check, X, Cpu, FileText, Target, Settings2 } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 
@@ -17,6 +18,36 @@ export function Settings() {
   const [chunkSize, setChunkSize] = useState(512);
   const [overlap, setOverlap] = useState(50);
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null);
+
+  const handleSaveSettings = () => {
+    const settings = {
+      temperature: temperature[0],
+      maxTokens: maxTokens[0],
+      topK: topK[0],
+      scoreThreshold: similarityThreshold[0],
+      enableRerank,
+      extractionMode,
+      searchMode,
+      chunkSize,
+      overlap,
+    };
+    localStorage.setItem('app_settings', JSON.stringify(settings));
+    toast.success('设置已保存');
+  };
+
+  const handleResetSettings = () => {
+    localStorage.removeItem('app_settings');
+    setTemperature([0.7]);
+    setMaxTokens([2000]);
+    setTopK([5]);
+    setSimilarityThreshold([0.7]);
+    setEnableRerank(true);
+    setExtractionMode('fast');
+    setSearchMode('hybrid');
+    setChunkSize(512);
+    setOverlap(50);
+    toast.info('已恢复默认设置');
+  };
 
   const tabs = [
     { id: 'model', label: '模型配置', icon: Cpu },
@@ -579,7 +610,8 @@ export function Settings() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <motion.button 
+        <motion.button
+          onClick={handleResetSettings}
           className="text-[#00d4ff] hover:underline"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -588,14 +620,16 @@ export function Settings() {
         </motion.button>
 
         <div className="flex gap-3">
-          <motion.button 
+          <motion.button
+            onClick={handleSaveSettings}
             className="px-6 py-3 glass border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all text-[#e8eaed]"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             重置
           </motion.button>
-          <motion.button 
+          <motion.button
+            onClick={handleSaveSettings}
             className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all relative overflow-hidden group"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
