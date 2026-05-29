@@ -199,22 +199,11 @@ Phase 的 worktree 命名规则：
 
 5. **合并到 main**
 
-   两种合并方式，根据场景选择：
-
-   **方式 A：Solo 开发（手动合并 + skill 清理）** — 适用于单人项目，快速迭代
-   ```bash
-   git checkout main
-   git merge <worktree-branch> --no-ff -m "<PR Body 格式>"
-   # 然后调用 superpowers:finishing-a-development-branch 清理 worktree 和分支
-   ```
-
-   **方式 B：团队协作（/ship）** — 适用于需要 PR 审查的多人项目
+   统一使用 `/ship`：
    ```
    /ship
    ```
-   `/ship` 会自动创建 PR、跑 CI、等待审查后合并。比手动合并重，但流程完整。
-
-   合并 commit 的 message 同样要使用 PR Body 格式。
+   `/ship` 会自动创建 PR、跑 CI、等待审查后合并。merge commit 的 message 由 `/ship` 自动生成。
 
 6. **Phase 合并后质量检查**
 
