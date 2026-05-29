@@ -18,6 +18,7 @@ interface SearchResult {
 
 export function RetrievalTest() {
   const [query, setQuery] = useState('');
+  const [collectionName, setCollectionName] = useState('');
   const [topK, setTopK] = useState([5]);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.7);
   const [enableRerank, setEnableRerank] = useState(true);
@@ -30,6 +31,10 @@ export function RetrievalTest() {
       toast.warning('请输入搜索关键词');
       return;
     }
+    if (!collectionName.trim()) {
+      toast.warning('请输入知识库名称');
+      return;
+    }
     setSearching(true);
     setResults([]);
     try {
@@ -37,7 +42,7 @@ export function RetrievalTest() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          collection_name: '',
+          collection_name: collectionName.trim(),
           query_text: query.trim(),
           top_k: topK[0],
         }),
@@ -81,6 +86,16 @@ export function RetrievalTest() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
+        <div className="mb-4">
+          <label className="text-sm text-[#94a3b8] mb-2 block">知识库名称</label>
+          <input
+            type="text"
+            value={collectionName}
+            onChange={(e) => setCollectionName(e.target.value)}
+            placeholder="例如: my_knowledge_base"
+            className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-[#e8eaed] placeholder-[#94a3b8] transition-all duration-300"
+          />
+        </div>
         <div className="flex gap-4">
           <div className="flex-1 relative">
             <textarea
