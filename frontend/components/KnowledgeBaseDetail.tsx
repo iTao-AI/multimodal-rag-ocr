@@ -43,8 +43,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
   const fetchKBDetails = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${config.milvusApiUrl}/knowledge_base/${collectionId}/documents`);
-      const result = await response.json();
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/${collectionId}/documents`);
 
       if (result.status === 'success') {
         setKbInfo({
