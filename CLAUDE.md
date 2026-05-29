@@ -2,96 +2,115 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## 项目 WHAT
+多模态 RAG OCR 知识库系统——用户上传 PDF，自动解析/切分/建索引，支持自然语言问答与混合检索。
 
-**Multimodal RAG OCR** — A knowledge base system with PDF document ingestion, OCR extraction, vector storage, and AI-powered Q&A. Two versions:
-- **V1.0**: PyMuPDF4LLM + VLM extraction
-- **V2.0**: MinerU + PaddleOCR-VL + DeepSeek-OCR (requires GPU server)
+## 项目 WHY
+从"能跑通的 demo"提升到"生产级可用"，修复 25 个已知代码缺陷，建立可持续迭代的工程实践。详见 @specs/prd.md。
 
-## Architecture
-
-The system has 4 independent backend FastAPI microservices + 1 frontend (React + Vite):
+## 工作流 HOW
 
 ```
-Frontend (Vite, :5173)
-  ├── KnowledgeBase management (CRUD via Milvus API)
-  ├── Chat interface (via kb_chat service)
-  └── Document viewer
-
-Backend Services:
-  ┌─ PDF Extraction (:8006) ── Extracts text/content from uploaded PDFs
-  │    ├── llm_extraction.py          (V1.0: PyMuPDF4LLM + VLM)
-  │    └── ocr_v2_extractors.py        (V2.0: MinerU/PaddleOCR/DeepSeek-OCR)
-  │
-  ├─ Text Chunking (:8001) ── Splits extracted markdown into chunks
-  │    └── markdown_chunker_api.py
-  │
-  ├─ Vector Database (:8000) ── Milvus API wrapper for embedding + storage
-  │    ├── milvus_api.py               (FastAPI wrapper around pymilvus)
-  │    └── milvus_kb_service.py
-  │    (Milvus runs via docker-compose with etcd + MinIO)
-  │
-  └─ Chat Service (:8501) ── RAG-based knowledge base Q&A
-       └── kb_chat.py
+① 启动 feature    → 在 specs/00X-<slug>/ 下跑 /speckit-specify → /speckit-clarify → /speckit-plan → /speckit-tasks
+② task 启动必读    → @.specify/memory/constitution.md + @specs/00X-*/spec.md + @specs/00X-*/plan.md
+③ 测试纪律         → 用 Skill("superpowers:test-driven-development")，纯函数写单元，接口写集成（Mock 外部 API）
+④ feature 完成     → 跑验证 gate（机械：测试/构建/ lint；语义：完整性/正确性/一致性），commit 后进入下一个
+⑤ 节奏铁律         → PRD 的 Must-have 必须先过测试再 merge；Should/Could 可带 TODO merge
 ```
 
-**Data flow**: Upload PDF → PDF Extraction (text/markdown) → Text Chunking → Milvus (embed + store) → Chat (retrieve + answer)
+## 技术栈
 
-## Key Commands
+| 层 | 技术 | 版本 |
+|---|------|------|
+| OCR | PyMuPDF4LLM + MinerU / PaddleOCR-VL / DeepSeek-OCR | 0.0.27 |
+| 后端 | FastAPI + Uvicorn | 0.119.0 / 0.37.0 |
+| 向量库 | Milvus + pymilvus | 2.6.2 |
+| 嵌入 | text-embedding-v4 (DashScope) | — |
+| 检索 | BM25 (rank-bm25 + jieba) + Redis 缓存 | — |
+| LLM | Qwen3-VL-Plus (DashScope) | — |
+| 前端 | React + Vite + TypeScript | ^18.3.1 / ^6.0.3 / ^5.6.3 |
+| UI | Radix UI + TailwindCSS | — |
 
-### Backend
-```bash
-# Activate conda environment (Python 3.11)
-conda activate vlm_rag
+## 命令清单
 
-# Install dependencies
-cd backend
-pip install -r requirements.txt
+| 用途 | 命令 |
+|------|------|
+| 启动后端全部 | `cd backend && ./start_all_services.sh` |
+| 停止后端 | `cd backend && ./stop_all_services.sh` |
+| 启动 Milvus | `cd backend/Database/milvus_server && docker compose -f docker-compose.yaml up -d` |
+| 停止 Milvus | `docker compose -f docker-compose.yaml down` |
+| 启动前端 | `cd frontend && npm run dev` |
+| 前端构建 | `cd frontend && npm run build` |
+| 前端 lint | `cd frontend && npm run lint` |
 
-# Start all backend services
-./start_all_services.sh
+## 约束
 
-# Check status / Stop all
-./status_services.sh
-./stop_all_services.sh
+1. Milvus 禁用 `restart: always`（etcd WAL 日志占满磁盘）
+2. 本地 Mac 无 GPU，V2.0 OCR 需远程 GPU（AutoDL）
+3. Python 3.11 conda 环境 `vlm_rag`
+4. API Key 只存 `backend/.env`，不提交 Git
 
-# View logs
-tail -f logs/<service_name>.log
-```
+## 项目宪法
 
-### Milvus (Docker)
-```bash
-cd backend/Database/milvus_server
+遵循 @.specify/memory/constitution.md 的 6 条核心原则（Test-First / No Silent Failures / Explicit Over Clever / Security-First / Graceful Degradation / Frontend Defaults）。
 
-# Start Milvus (MUST be manual, never auto-restart)
-docker compose -f docker-compose.yaml up -d
+## Anti-Patterns（禁止）
 
-# Stop Milvus (prevents WAL log bloat)
-docker compose -f docker-compose.yaml down
-```
+- 插入随机向量作为 API 失败 fallback（永久污染知识库）
+- `async def` 内用同步 `requests.post()`（阻塞 event loop）
+- `except Exception` 后只 `print` 不记录/不降级
+- `allow_origins=["*"]` 与 `allow_credentials=True` 同用
+- `fetch().json()` 不检查 `response.ok`（500 非 JSON 时组件崩溃）
+- 在 Git 历史中提交 API Key
+- 删除与自己改动无关的 dead code
+- 前端持有或传输 LLM API Key
 
-### Frontend
-```bash
-cd frontend
-npm install       # first time
-npm run dev       # → http://localhost:5173
-npm run build     # production build
-npm run lint      # ESLint
-```
+## Behavioral Guidelines (Karpathy-Inspired)
 
-## Configuration
+以下 4 条原则适用于全项目所有 task 实现期，目的是减少 AI 编码的常见失误。
 
-- **Backend**: `backend/.env` — LLM model, embedding, Milvus, OCR service URLs
-- **Frontend**: `frontend/.env` (copy from `frontend/env.template`)
-- Uses Alibaba DashScope API (qwen3-vl-plus model, text-embedding-v4)
+### 1. Think Before Coding
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-## Critical Constraints
+### 2. Simplicity First
+**Minimum code that solves the problem. Nothing speculative.**
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+If you write 200 lines and it could be 50, rewrite it.
 
-1. **Milvus must NEVER use `restart: always`** in docker-compose — etcd WAL logs will fill the disk. Always manual start/stop.
-2. **No GPU on local Mac** — MinerU, PaddleOCR-VL, and DeepSeek-OCR require a remote GPU server (AutoDL). Local `.env` points to `localhost` as proxy; real IPs go in the GPU server's config.
-3. **Python environment**: conda `vlm_rag` (Python 3.11), not system Python.
-4. **Large directories excluded**: `minerU/MinerU_2_5_4/`, `node_modules/`, `backend/output/`, `backend/Database/milvus_server/data/volumes/` are in `.gitignore`.
+### 3. Surgical Changes
+**Touch only what you must. Clean up only your own mess.**
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+The test: Every changed line should trace directly to the user's request.
 
-## Remote Repository
+### 4. Goal-Driven Execution
+**Define success criteria. Loop until verified.**
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
 
+## 关键文件导航
+
+| 文件 | 何时读 |
+|------|--------|
+| @specs/prd.md | 任何新功能/修复前，确认 WHAT/WHY/验收标准 |
+| @.specify/memory/constitution.md | 每次 task 启动，确认遵循哪条原则 |
+| @CLAUDE.md | 本文件，每次工作前确认项目上下文 |
+| @specs/00X-*/spec.md | 执行具体 feature 时 |
+| @docs/INTERVIEW_PREP.md | 准备面试问答时 |
+| @docs/ROADMAP.md | 了解项目改进路线和优先级时 |
+
+## 远程仓库
 `git@github.com:iTao-AI/multimodal-rag-ocr.git`
