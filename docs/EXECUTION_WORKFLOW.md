@@ -1,169 +1,207 @@
 # Subagent + Worktree 执行流程模板
 
 > 本文档可复用于任何基于 implementation plan 的多 Phase 并行开发流程。
+>
+> **v4 核心原则**：Subagent 只管写代码，Skill 调用全部由用户手动执行。全流程可控、可验证。
+
+---
+
+## 架构：谁负责什么
+
+| 步骤 | 谁执行 | 说明 |
+|------|--------|------|
+| ① 创建 worktree | 主 Agent | `git worktree add` |
+| ② 派发 subagent 写代码 | Subagent | 只负责读文件、改代码、不 commit |
+| ③ **TDD 写测试** | **用户手动执行** | `superpowers:test-driven-development` |
+| ④ subagent 实现代码 | Subagent | 根据 TDD 指导写实现 |
+| ⑤ **代码审查** | **用户手动执行** | `superpowers:requesting-code-review` |
+| ⑥ **完成前验证** | **用户手动执行** | `superpowers:verification-before-completion` |
+| ⑦ commit | 用户手动或让 subagent 执行 | 所有 Skill 通过后 |
+| ⑧ /ship + 合并 | 主 Agent | `git worktree remove` + `git worktree prune` |
 
 ---
 
 ## 可用 Skills 清单
 
-### 核心 Skills（每个 worktree 必用）
+### 核心 Skills（由用户在 subagent 停顿时手动调用）
 
 | Skill | 用途 | 触发时机 |
 |-------|------|----------|
-| `superpowers:test-driven-development` | TDD 流程 | 每个 Task 开始时 |
-| `superpowers:using-git-worktrees` | 隔离 worktree | Phase 开始时 |
-| `superpowers:verification-before-completion` | 完成前自动验证 | Task 全部完成后、报告前 |
+| `superpowers:test-driven-development` | TDD 流程 | 每个 Task 开始，subagent 停顿时 |
+| `superpowers:verification-before-completion` | 完成前自动验证 | 全部 task 完成后 |
 | `superpowers:requesting-code-review` | 发起 code review | commit 前 |
 | `superpowers:receiving-code-review` | 响应 review 反馈 | 收到 review 意见后 |
-| `superpowers:finishing-a-development-branch` | 分支合并 + 清理 | worktree 任务全部完成后 |
-| `superpowers:executing-plans` | inline 执行 plan（备选） | 单文件小改动不需要 worktree 时 |
 
-### 阶段 Skills（主 agent 在 Phase 合并后调用）
+### 阶段 Skills（主 agent 调用）
 
 | Skill | 用途 | 触发时机 |
 |-------|------|----------|
-| `/review` | diff 审查 | merge 前，审查 worktree 分支的 diff |
-| `/ship` | 创建 PR + 合并到 main | 替代手动 `git merge` |
-| `/land-and-deploy` | 合并后跑 CI + 部署验证 | ship 完成后 |
-| `/health` | 代码质量打分（0-10） | Phase 开始前记录 baseline + 合并后记录趋势 |
+| `superpowers:using-git-worktrees` | 隔离 worktree | Phase 开始时 |
+| `superpowers:finishing-a-development-branch` | 分支合并 + 清理 | worktree 任务全部完成后 |
+| `/review` | diff 审查 | merge 前 |
+| `/ship` | 创建 PR + 合并到 main | 代替手动 merge |
+| `/health` | 代码质量打分 | Phase 开始前 + 合并后 |
 
-### 按需 Skills（按需触发）
+### 按需 Skills
 
 | Skill | 用途 | 何时使用 |
 |-------|------|----------|
-| `/qa` | 前端 QA 测试 + 自动修 bug | Phase 涉及前端 UI 变更时 |
-| `/investigate` | 结构化 4 阶段根因调查 | agent 遇到无法定位的 bug 时 |
-| `/document-release` | PR 合并后自动更新文档 | 全部 Phase 完成后 |
-| `/retro` | 周回顾，总结进度 | 全部 Phase 完成后，或每周末（非每个 Phase 后） |
-| `/cso` | 首席安全官模式，安全审计 | 涉及安全变更时（密钥、鉴权、CORS） |
-| `/canary` | 部署后监控 | 实际部署到生产环境后 |
+| `/qa` | 前端 QA | 涉及前端 UI 变更 |
+| `/investigate` | 根因调查 | 无法定位的 bug |
+| `/cso` | 安全审计 | 密钥、鉴权、CORS |
 
 ---
 
 ## 执行前准备
 
-确保以下条件已满足：
 - [ ] PRD 已完成：`specs/prd.md`
-- [ ] Implementation Plan 已完成：`docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
-- [ ] 当前分支为 `main`，工作区干净（`git status` 无未提交变更）
-- [ ] 核心 Skills 已确认可用（见上方清单）
-- [ ] 调用 `/health` 记录 baseline 质量分数（用于对比 Phase 后的质量变化）
-- [ ] 清理旧 worktree 和旧分支（如果之前跑过相同 Phase）：
+- [ ] Implementation Plan 已完成
+- [ ] 当前分支为 `main`，工作区干净
+- [ ] 清理旧 worktree 和分支：
   ```bash
   git worktree prune
-  git branch -D fix/* enhance/*  # 删除旧分支，确认无未合并变更
+  git branch -D fix/* enhance/*
   rm -rf ../worktrees/*
   ```
+- [ ] 调用 `/health` 记录 baseline
 
 ---
 
-## 主 Agent 提示词模板
-
-将以下内容直接粘贴给主 Agent，替换 `[计划文件路径]` 和 `[Phase N]` 即可复用。
+## Subagent Prompt 模板（v4 — 停顿模式）
 
 ```
-我准备执行保存在 `[计划文件路径]` 的 Implementation Plan。
-
-请按照以下流程执行：
-
-## 第一步：创建 Worktree
-
-使用 `superpowers:using-git-worktrees` 创建隔离 worktree。
-每个 worktree 基于 main 分支，位于 `../worktrees/<feature-slug>/` 目录。
-
-Phase 的 worktree 命名规则：
-- 修复类：`fix-<bug-slug>`
-- 增强类：`enhance-<feature-slug>`
-
-可并行的 Phase 同时创建，有依赖关系的 Phase 必须等前序 Phase 合并后再创建。
-
-## 第二步：派发 Subagent
-
-为每个 worktree 派发一个独立 subagent，使用以下 prompt 模板：
-
----
-
-### Subagent Prompt 模板
-
 你是本项目的实现工程师，正在执行 [Phase 名称] 的开发任务。
 
 ## 工作环境
-
-- 工作目录：`../worktrees/<worktree-name>/`
-- 分支：`<branch-name>`（worktree 自动创建的分支）
-- Python 环境：conda activate vlm_rag（Python 3.11）
+- 工作目录：../worktrees/<worktree-name>/
+- 分支：<branch-name>（worktree 自动创建）
+- Python 环境：conda activate vlm_rag
 
 ## 必读文件
+1. specs/prd.md
+2. .specify/memory/constitution.md
+3. CLAUDE.md
 
-开始任务前，按顺序阅读：
-1. `specs/prd.md` — 了解业务目标和验收标准
-2. `.specify/memory/constitution.md` — 6 条核心开发原则
-3. `CLAUDE.md` — 项目上下文、技术栈、Anti-Patterns
+## 工作模式（CRITICAL — 与之前不同）
+
+你负责写代码，Skill 调用由用户手动执行。流程如下：
+
+### 每个 Task 的步骤
+
+**Step 1 — 你写测试 stub**
+- 创建测试文件（如 backend/tests/test_xxx.py）
+- 写好测试用例的骨架，但暂时不运行
+- **完成后停下来**，报告："Task X 测试 stub 已写好，请运行 TDD skill"
+
+**Step 2 — 等待用户运行 TDD**
+- 用户运行 `superpowers:test-driven-development`
+- 用户告诉你测试结果（RED → GREEN → REFACTOR）
+- 根据结果写实现代码或修复测试
+
+**Step 3 — 你实现代码**
+- 写最小实现让测试通过
+- **完成后停下来**，报告："Task X 实现完成，请运行 review"
+
+**Step 4 — 等待用户运行 Code Review**
+- 用户运行 `superpowers:requesting-code-review`
+- 用户告诉你审查意见
+- 根据意见修复
+
+**Step 5 — 等待用户运行 Verification**
+- 用户运行 `superpowers:verification-before-completion`
+- 用户告诉你验证结果
+
+**Step 6 — 等待用户确认 commit**
+- 所有 Skill 通过后，用户让你 commit
+- 你执行 commit，使用以下格式：
+
+### Commit Message 格式
+
+```
+fix: 简短描述 (#缺陷号)
+
+问题：痛点描述（1句）
+方案：核心变更（1-2句）
+价值：对用户的收益（1句）
+
+技术细节：
+- 文件路径: 变更说明
+
+Test plan:
+- 验证步骤
+```
+
+- type 只能是：fix, feat, chore, test
+- **必须执行 `git branch --show-current` 确认分支名**
+- **只 add 该 Task 涉及的文件，严禁 `git add -A`**
 
 ## 任务清单
-
-执行以下任务（按顺序，每个 task 完成后标记完成并 commit）：
 
 [从 Plan 文档中复制该 Phase 的全部 Task 内容]
 
 ## 任务标签执行规则
 
-每个 task 按以下标签分类执行。如果你的任务不涉及某类标签，跳过对应规则即可。
-
 ### [FE] 前端任务
-- 写测试前先读取设计文档和设计稿（如果有 DESIGN.md 或设计参考目录）
-- 实现时优先复用现有组件和模式，不要从零重写
-- 遵守 constitution 中的 Frontend Defaults 原则
+- 写测试前先读设计文档（如果有）
+- 优先复用现有组件
+- 遵守 Frontend Defaults 原则
 
 ### [BE] 后端任务
-- 按 plan 中的契约规范写测试 stub（API 契约、OpenAPI / JSON Schema），如不涉及可忽略
-- 服务间调用必须有明确的接口定义
-- 外部 API 调用必须有超时和重试逻辑
+- 按 plan 契约写测试 stub
+- 外部 API 调用必须有超时和重试
 
 ### [INT] 集成任务
-- 必须在对应 [FE] 和 [BE] 都通过后启动，跑真实端到端（不 mock）
-- 涉及两类场景：
-  - E2E 类 [INT]：只在最后跑真实链路
-  - config/migration/契约类 [INT]：按 tasks.md 的依赖图正常排序
-- 跨 feature patch 类 [INT]：改完必须重跑被改 feature 的现有单测，绿了才算过
+- 在对应 [FE] 和 [BE] 都通过后启动
+- E2E 类在最后跑真实链路
 
-## TDD 强制要求（CRITICAL）
+## 最终报告格式
 
-每个 Task 执行时，必须按以下顺序操作：
+全部 task 完成后，报告：
 
-1. **先调用** `Skill("superpowers:test-driven-development")`
-2. 按 TDD 流程执行：写测试 → 跑失败 → 实现 → 跑通过 → commit
-3. **严禁跳过测试直接写实现**
-4. **严禁手动写 test 文件或手动更新 tasks.md**
+```
+=== [Phase 名称] 完成报告 ===
+任务完成数：X/Y
+[FE] 任务：M 个 | [BE] 任务：K 个 | [INT] 任务：L 个
+代码审查：发现 X 个缺陷已全部修复
+遗留问题：无
+```
 
-如果 skill 无法调用（技能缺失或配置错误），必须向我报告并等待指令，不能自行绕过。
+---
 
-## 完成前验证（CRITICAL）
+## 主 Agent 流程
 
-所有任务完成后、报告完成前，必须调用：
-`Skill("superpowers:verification-before-completion")`
+### 第一步：创建 Worktree
 
-该 skill 会：
-- 实际运行测试并检查 exit code
-- 验证无遗留 TODO/TBD
-- 确认 Anti-Pattern 清单
+```bash
+git worktree add ../worktrees/<feature-slug> main -b <branch-name>
+```
 
-**严禁**：未通过此 skill 就报告任务完成。
+### 第二步：派发 Subagent
 
-## Code Review（CRITICAL）
+用上面的 **Subagent Prompt 模板** 派发 subagent。
 
-在 commit 之前，调用：
-`Skill("superpowers:requesting-code-review")`
+### 第三步：用户手动执行 Skills
 
-让其他 agent 或主 agent 审查 diff。审查必须覆盖以下 4 类关键缺陷：
+Subagent 写代码过程中，你会在以下时刻停顿：
 
-1. **韧性缺陷**：缺重试 / 缺超时 / 缺熔断器
-2. **横切一致性缺陷**：鉴权 / 限流 / 日志 是否覆盖了所有接口
-   （"4 个接口里 3 个有鉴权检查，第 4 个漏了"是经典翻车场景）
-3. **防御性编码缺陷**：未处理的 null / 缺输入校验 / 缺幂等键
-4. **数据库迁移缺陷（如涉及）**：是否有回滚脚本 + 是否分批操作
+1. **测试 stub 写好时** → 你运行 `superpowers:test-driven-development`
+2. **实现完成时** → 你运行 `superpowers:requesting-code-review`
+3. **全部完成时** → 你运行 `superpowers:verification-before-completion`
 
-根据 review 意见修改后，再 commit。审查报告使用以下格式：
+每个 Skill 运行后，把结果告诉 subagent，让它继续。
+
+### 审查格式参考（用户手动执行时可参考）
+
+运行 `superpowers:requesting-code-review` 时，审查必须覆盖 4 类缺陷：
+
+| 类别 | 关注点 | 示例 |
+|------|--------|------|
+| 韧性缺陷 | 缺重试/缺超时/缺熔断器 | `chat.py:134 retrieve_documents() 缺超时设置` |
+| 横切一致性 | 鉴权/限流/日志是否覆盖所有接口 | `4 个接口里 3 个有鉴权检查，第 4 个漏了` |
+| 防御性编码 | 未处理的 null/缺输入校验/缺幂等键 | `api.py:42 未处理 API 返回空 choices` |
+| 数据库迁移 | 是否有回滚脚本+是否分批操作 | `20240101_add_column.py 无回滚脚本` |
+
+审查报告格式：
 
 | 编号 | 类别 | 文件:行 | 描述 | 修复优先级 |
 |------|------|---------|------|-----------|
@@ -171,221 +209,72 @@ Phase 的 worktree 命名规则：
 | 2 | 防御性 | api.py:42 | 未处理 API 返回空 choices | P1 |
 
 0 个缺陷 → 进入 commit
-有缺陷 → 回到对应 task 走 TDD 修复，重新走一次 requesting-code-review，直到 0 缺陷
+有缺陷 → 回到对应 task 走 TDD 修复，重新走一次 review，直到 0 缺陷
 
-如果涉及安全变更（密钥、鉴权、CORS），额外调用：
-`Skill("cso")`
+如果涉及安全变更（密钥、鉴权、CORS），额外运行 `Skill("cso")`。
 
-## 提交规则（CRITICAL）
+### 第四步：Review Gate + 合并
 
-- 每个 Task 完成后立即 commit
-- **必须在当前 worktree 分支上 commit，严禁切换到 main 分支操作**
-- commit 前必须执行 `git branch --show-current` 确认当前分支名
-- 只 add 该 Task 涉及的文件，严禁 `git add -A`
-- commit message 必须严格使用以下 PR Body 模板，每个段落都必须有实际内容：
+Subagent 全部 task 完成且 commit 后：
 
-示例：
-```
-fix: 替换 Embedding API 失败时的随机向量 fallback 为 503 异常 (#13)
-
-问题：Embedding API 失败时插入 np.random.rand() 随机向量，永久污染知识库
-方案：改为抛出 HTTPException(503)，添加指数退避重试（1s→2s→4s，最多3次）
-价值：确保知识库数据完整性，不再插入脏数据
-
-技术细节：
-- milvus_api.py: generate_embedding() 和 generate_embeddings_batch() 的 except 块
-- 新增 call_with_retry() 工具函数
-
-Test plan:
-- pytest tests/test_embedding_pipeline.py 7/7 通过
-- 模拟 API 超时验证 503 返回
-```
-
-- type 只能是：fix（修复）, feat（新功能）, chore（清理）, test（测试）
-- **每个段落都不能留空或使用 "无"/"N/A" 代替**
-- commit message 中必须包含 `Skill:` 标签，注明已调用的 skill，例如：
-  `Skill: superpowers:test-driven-development, superpowers:verification-before-completion`
-
-## Review Gate
-
-所有任务完成后，运行以下自检命令并报告结果：
-
-1. `cd backend && python -m pytest tests/ -v` — 所有测试通过
-2. `cd frontend && npm run lint` — 无 lint 错误
-3. 代码审查：无 Anti-Pattern（见 CLAUDE.md）
-4. 无遗留 TODO/TBD/占位符
-
-报告格式：
-```
-=== [Phase 名称] 完成报告 ===
-任务完成数：X/Y
-[FE] 任务：M 个 | [BE] 任务：K 个 | [INT] 任务：L 个
-测试通过率：X/Y
-lint 状态：通过/失败（列出失败项）
-代码审查：发现 X 个缺陷已全部修复
-遗留问题：无 或 列出具体问题
-```
-
----
-
-## 第三步：Review Gate + 合并
-
-所有 subagent 完成后，主 Agent 执行：
-
-1. **检查每个 worktree 的 commit 是否在正确分支上**
+1. **检查 commit 分支**：
    ```bash
    cd ../worktrees/<worktree-name> && git log --oneline && git branch --show-current
    ```
-   ⚠️ 如果 commit 在 main 上而非 worktree 分支，需要 cherry-pick 到正确分支。
 
 2. **运行 `/review` 审查 diff**
-   ```
-   /review
-   ```
-   审查 worktree 分支相对于 main 的 diff。根据 review 结果决定是否合并。
 
-3. **运行测试验证**
+3. **运行测试**：
    ```bash
    cd ../worktrees/<worktree-name>/backend && python -m pytest tests/ -v
    ```
 
-4. **检查 diff 质量**
-   ```bash
-   cd ../worktrees/<worktree-name> && git diff main --stat
-   ```
-
-5. **合并到 main**
-
-   统一使用 `/ship`：
+4. **合并**：
    ```
    /ship
    ```
-   `/ship` 会自动创建 PR、跑 CI、等待审查后合并。
 
-   **注意**：如果 `/ship` 不可用或项目为 solo 开发，手动合并：
-   ```bash
-   git checkout main
-   git merge <worktree-branch> --no-ff -m "<PR Body 格式>"
-   ```
-   手动合并的 commit message 同样使用 PR Body 格式。
-
-6. **清理 worktree**
-
-   合并后必须清理 worktree 目录和分支引用：
+5. **清理**：
    ```bash
    git worktree remove ../worktrees/<worktree-name>
    git worktree prune
    ```
 
-7. **Phase 合并后质量检查**
-
-   调用 `/health` 运行代码质量打分：
+6. **质量检查**：
    ```
    /health
    ```
-   对比执行前的 baseline 分数，记录质量趋势，追踪 Phase 进展。
-
-8. **如果某个 worktree 失败**：修复后重新 commit，不合并有问题的部分
-
-## 第四步：进入下一 Phase
-
-当前 Phase 合并到 main 后：
-1. 确保 main 分支是最新的
-2. 调用 `/health` 记录质量趋势（对比 baseline）
-3. 创建下一 Phase 的 worktree（基于最新 main）
-4. 重复第二步和第三步
 
 ---
 
 ## Phase 依赖执行顺序
 
 ```
-Phase 1（N 个并行 worktree）  → review → ship 合并 → health
+Phase 1 → review → ship → health
     ↓
-Phase 2（N 个并行 worktree）  → review → ship 合并 → health
+Phase 2 → review → ship → health
     ↓
-Phase 3（N 个并行 worktree）  → review → ship 合并 → health
-    ↓
-...（后续 Phase 依此类推）
+Phase 3 → review → ship → health
 ```
 
-**禁止**：有依赖关系的 Phase 不能并行创建 worktree。
-**允许**：同一 Phase 内无依赖的 worktree 可以并行创建和执行。
+有依赖的 Phase 不能并行。同一 Phase 内无依赖的 worktree 可以并行。
 
 ---
 
-## 全部 Phase 完成后
-
-调用以下 skills 做最终收尾：
-
-1. `/health` — 记录最终质量分数，对比 baseline 输出趋势图
-2. `/retro` — 周回顾，总结本轮开发的进度和教训
-3. `/document-release` — 更新 README、CHANGELOG、架构文档
-4. `/land-and-deploy` — 部署到生产环境（如果有部署配置）
-5. `/canary` — 部署后监控生产环境
-
----
-
-## 快速执行检查清单
-
-执行前逐项确认：
-
-### 核心 Skills
-- [ ] `superpowers:test-driven-development` 可用
-- [ ] `superpowers:using-git-worktrees` 可用
-- [ ] `superpowers:verification-before-completion` 可用
-- [ ] `superpowers:requesting-code-review` 可用
-- [ ] `superpowers:receiving-code-review` 可用
-- [ ] `superpowers:finishing-a-development-branch` 可用
-
-### Phase Skills
-- [ ] `/review` 可用
-- [ ] `/ship` 可用
-- [ ] `/health` 可用
-
-### 按需 Skills（按需确认）
-- [ ] `/qa` 可用（前端相关）
-- [ ] `/investigate` 可用（debug 需要）
-- [ ] `/cso` 可用（安全相关）
-
-### 环境
-- [ ] PRD 已完成且无 TBD
-- [ ] Plan 已完成且每个 Task 有精确文件路径和代码
-- [ ] 当前分支为 main，工作区干净
-- [ ] baseline 质量分数已记录（`/health`）
-- [ ] 旧 worktree 和旧分支已清理（`git worktree prune` + `rm -rf ../worktrees/*`）
-- [ ] conda 环境 `vlm_rag` 可用（Python 3.11）
-- [ ] 前端 `node_modules` 已安装
-- [ ] Milvus Docker 可启动（集成测试需要）
-- [ ] Subagent Prompt 模板已替换所有占位符
-
----
-
-## Phase 1 运行经验（Lessons Learned）
-
-### 本次踩坑记录
+## Lessons Learned（v4 更新）
 
 | 问题 | 原因 | 修复 |
 |------|------|------|
-| worktree 创建失败 `fatal: branch already exists` | 上轮 run 后旧分支未删除 | 执行前先 `git branch -D fix/*` |
-| `rm -rf` 删除目录后 `git worktree list` 仍显示 | 只删目录没清理 git 内部引用 | 必须 `git worktree prune` |
-| 1A agent 把 commit 打到 main 而非 worktree 分支 | agent 可能意外 checkout main | prompt 中加硬性约束 + 事后 cherry-pick |
-| commit message 格式不统一 | 每个 agent 风格不同 | 给完整示例模板而非格式描述 |
-| TDD skill 和 verification skill 未实际调用 | agent "模拟"了流程而非真正加载 skill | commit message 必须包含 `Skill:` 标签 |
-
-### 下次执行必做项
-
-- [ ] 执行前 `git branch -D fix/* enhance/*` + `git worktree prune` + `rm -rf ../worktrees/*`
-- [ ] commit message 必须包含 `Skill:` 标签
-- [ ] 每个 agent 完成后用 `git log --oneline && git branch --show-current` 验证分支
-- [ ] 先跑 1 个 agent 验证流程再跑 N 个并行
+| subagent "模拟" TDD 而非真正调用 | Skill 在 subagent 中无法保证加载 | **v4 改为：subagent 停顿，用户手动执行** |
+| subagent commit 打到 main | agent 意外 checkout | prompt 硬性约束 + 事后验证 |
+| commit message 格式不统一 | 只给格式描述不给示例 | 给完整示例模板 |
+| 审查清单未执行 | subagent 跳过审查步骤 | 审查由用户手动执行 |
 
 ---
 
 ## 复用说明
 
-将此模板保存为 `docs/EXECUTION_WORKFLOW.md`，每次新 Feature 开发时：
+每次新 Feature 开发时：
 1. 复制此模板
-2. 替换 `[计划文件路径]`、`[Phase 名称]`、Task 清单
-3. 按需调整 worktree 命名和 Phase 数量
-4. 粘贴给主 Agent 执行
+2. 替换 `[Phase 名称]`、Task 清单、worktree 名
+3. 粘贴给主 Agent 执行
