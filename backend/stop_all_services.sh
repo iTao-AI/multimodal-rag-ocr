@@ -71,6 +71,20 @@ pkill -f "markdown_chunker_api.py" 2>/dev/null && echo -e "${GREEN}  ✓ 清理 
 pkill -f "milvus_api.py" 2>/dev/null && echo -e "${GREEN}  ✓ 清理 向量数据库服务${NC}" || true
 pkill -f "kb_chat.py" 2>/dev/null && echo -e "${GREEN}  ✓ 清理 对话检索服务${NC}" || true
 
+# 确认服务已停止
+echo ""
+echo -e "${BLUE}确认服务已停止...${NC}"
+ALL_STOPPED=true
+for port in 8006 8001 8000 8501; do
+    if curl -sf "http://localhost:${port}/health" > /dev/null 2>&1; then
+        echo -e "  ${RED}✗${NC} 端口 $port 仍在响应"
+        ALL_STOPPED=false
+    fi
+done
+if [ "$ALL_STOPPED" = true ]; then
+    echo -e "  ${GREEN}✓${NC} 所有服务已停止"
+fi
+
 echo -e "\n${BLUE}========================================${NC}"
 echo -e "${GREEN}✅ 所有服务已停止${NC}"
 echo -e "${BLUE}========================================${NC}\n"

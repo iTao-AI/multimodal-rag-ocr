@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # === Milvus Infrastructure ===
+  etcd:
+    container_name: rag-etcd
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/quay.io/coreos/etcd:v3.5.5
+    restart: "no"
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    volumes:
+      - etcd-data:/etcd
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    container_name: rag-minio
+    image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
+    restart: "no"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-ragminio}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-ragminio123}
+    volumes:
+      - minio-data:/minio_data
+    command: minio server /minio_data
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  milvus:
+    container_name: rag-milvus
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/milvusdb/milvus:v2.5.6-gpu
+    restart: "no"
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      COMMON_STORAGETYPE: minio
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 10s
+      start_period: 30s
+      timeout: 5s
+      retries: 10
+
+  # === FastAPI Microservices ===
+  pdf-extraction:
+    build:
+      context: ..
+      dockerfile: backend/Information-Extraction/unified/Dockerfile
+    ports:
+      - "8006:8006"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      milvus:
+        condition: service_healthy
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  text-chunking:
+    build:
+      context: ..
+      dockerfile: backend/Text_segmentation/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  milvus-api:
+    build:
+      context: ..
+      dockerfile: backend/Database/milvus_server/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - MILVUS_HOST=rag-milvus
+      - MILVUS_PORT=19530
+    depends_on:
+      milvus:
+        condition: service_healthy
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chat:
+    build:
+      context: ..
+      dockerfile: backend/chat/Dockerfile
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - MILVUS_API_URL=http://milvus-api:8000
+      - CHUNKING_SERVICE_URL=http://text-chunking:8001
+      - EXTRACTION_API_URL=http://pdf-extraction:8006
+    depends_on:
+      milvus-api:
+        condition: service_healthy
+    networks:
+      - rag-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  etcd-data:
+  minio-data:
+  milvus-data:
+
+networks:
+  rag-net:
+    driver: bridge

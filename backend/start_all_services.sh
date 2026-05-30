@@ -204,6 +204,10 @@ else
     echo -e "${YELLOW}⚠️  PaddleOCR-VL 服务未安装（可选）${NC}\n"
 fi
 
+echo ""
+echo -e "${BLUE}等待服务就绪...${NC}"
+./health_check.sh
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}✅ 所有服务启动完成！${NC}"
 echo -e "${BLUE}========================================${NC}\n"
