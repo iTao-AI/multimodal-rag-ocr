@@ -1,0 +1,19 @@
+# backend/.dockerignore
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+*.log
+logs/
+pids/
+output/
+mineru_visualizations/
+data/
+tests/
+knowledge-management/
+knowledge-base-api/
+fastapi-document-retrieval/
+.venv/
+*.pyc
