@@ -85,6 +85,32 @@ if [ "$ALL_STOPPED" = true ]; then
     echo -e "  ${GREEN}✓${NC} 所有服务已停止"
 fi
 
+# 停止 Milvus Docker 容器
+echo ""
+echo -e "${YELLOW}停止 Milvus 基础设施...${NC}"
+MILVUS_DIR="$SCRIPT_DIR/Database/milvus_server"
+if [ -d "$MILVUS_DIR" ]; then
+    if docker compose -f "$MILVUS_DIR/docker-compose.yaml" ps --quiet 2>/dev/null | grep -q .; then
+        docker compose -f "$MILVUS_DIR/docker-compose.yaml" down
+        echo -e "${GREEN}  ✓ Milvus 容器已停止${NC}"
+    else
+        echo -e "${YELLOW}  ⚠️  没有运行中的 Milvus 容器${NC}"
+    fi
+else
+    echo -e "${YELLOW}  ⚠️  Milvus 目录不存在${NC}"
+fi
+
+# 停止 Docker Compose 全量编排（如果用户用 docker-compose.full.yml 启动的）
+echo -e "${YELLOW}检查 Docker Compose 全量编排...${NC}"
+if [ -f "$SCRIPT_DIR/docker-compose.full.yml" ]; then
+    if docker compose -f "$SCRIPT_DIR/docker-compose.full.yml" ps --quiet 2>/dev/null | grep -q .; then
+        docker compose -f "$SCRIPT_DIR/docker-compose.full.yml" down
+        echo -e "${GREEN}  ✓ Docker Compose 全量编排已停止${NC}"
+    else
+        echo -e "${YELLOW}  ⚠️  没有运行中的 Docker Compose 全量编排${NC}"
+    fi
+fi
+
 echo -e "\n${BLUE}========================================${NC}"
 echo -e "${GREEN}✅ 所有服务已停止${NC}"
 echo -e "${BLUE}========================================${NC}\n"
