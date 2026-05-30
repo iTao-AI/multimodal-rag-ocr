@@ -92,7 +92,7 @@ export function Chat({ isV2 = false }: ChatProps) {
           // V2模式：只显示带 _v2 后缀的
           const filteredKBs = kbResult.knowledge_bases.filter((kb: KnowledgeBase) => {
             // 修复：检查 collection_name/display_name 而不是 collection_id
-            const displayName = kb.display_name || kb.collection_name || '';
+            const displayName = kb.display_name || kb.collection_id || '';
             const isV2KB = displayName.endsWith('_v2');
             return isV2 ? isV2KB : !isV2KB;
           });

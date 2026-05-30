@@ -3,7 +3,6 @@ import { X, Upload, FileText, Settings, AlertCircle, CheckCircle, Loader2, Plus 
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { getExtractionMethods, getUploadEndpoint, getDefaultExtractionMethod } from '../src/api/config';
-import { config } from '../src/config';
 import { safeFetchJSON } from '../src/api';
 
 interface UploadDialogProps {
@@ -81,13 +80,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
   const fetchKnowledgeBases = async () => {
     setLoading(true);
     try {
-      // 确保 API URL 不为 undefined
-      const baseUrl = config.milvusApiUrl || import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
+      const baseUrl = import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
       const apiUrl = `${baseUrl}/stats/all`;
-      console.log('[UploadDialog] 请求 URL:', apiUrl);
-      console.log('[UploadDialog] config.milvusApiUrl:', config.milvusApiUrl);
-      console.log('[UploadDialog] import.meta.env.VITE_MILVUS_API_URL:', import.meta.env.VITE_MILVUS_API_URL);
-      console.log('[UploadDialog] baseUrl:', baseUrl);
 
       const result = await safeFetchJSON(apiUrl);
 
@@ -117,9 +111,9 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
         setKnowledgeBases(processedCollections);
       }
     } catch (error) {
-      console.error('获取知识库列表失败:', error);
-      console.error('[UploadDialog] 错误详情:', error.message, error.stack);
-      toast.error('获取知识库列表失败: ' + error.message);
+      const msg = error instanceof Error ? error.message : '未知错误';
+      console.error('获取知识库列表失败:', msg);
+      toast.error('获取知识库列表失败: ' + msg);
     } finally {
       setLoading(false);
     }
@@ -135,7 +129,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
       // ✅ V2模式：自动添加 _v2 后缀
       const actualKBName = isV2 ? `${newKBName}_v2` : newKBName;
       
-      const baseUrl = config.milvusApiUrl || import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
+      const baseUrl = import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
       const result = await safeFetchJSON(
         `${baseUrl}/knowledge_base/create?display_name=${encodeURIComponent(actualKBName)}`,
         { method: 'POST' }
