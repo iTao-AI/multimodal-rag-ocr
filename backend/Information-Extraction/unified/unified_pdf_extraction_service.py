@@ -422,7 +422,7 @@ class PDFExtractionService:
             "total_time": round(self.total_time, 2)
         }
         
-        logger.info("print("\n" + "="*60)")
+        logger.info("\n" + "="*60)
         logger.info("提取完成")
         logger.info(f"  总页数: {total_pages}")
         logger.info(f"  表格数: {len(all_tables)}")
