@@ -298,6 +298,11 @@ async def root():
         }
     }
 
+@app.get("/health")
+async def health_check():
+    """健康检查端点"""
+    return {"status": "healthy", "service": "text-chunking"}
+
 @app.post("/chunk", response_model=ChunkingResponse)
 async def chunk_markdown(request: ChunkingRequest):
     """
