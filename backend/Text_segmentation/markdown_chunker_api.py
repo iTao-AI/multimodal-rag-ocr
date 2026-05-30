@@ -4,6 +4,9 @@ Markdown文本切分API服务
 - V1: header_recursive（默认）, markdown_only
 - V2: ocr_aware, layout_based (用于 OCR 2.0)
 """
+import logging
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI, HTTPException # type: ignore
 from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from pydantic import BaseModel, Field # type: ignore
@@ -20,7 +23,14 @@ try:
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
-    print("⚠️  langchain_text_splitters 未安装，V2 切分方法将不可用")
+    logger.warning("langchain_text_splitters 未安装，V2 切分方法将不可用")
+
+# 初始化结构化日志
+try:
+    from common.logging_config import setup_logging
+    setup_logging("rag-chunker")
+except Exception:
+    pass  # logging already configured via basicConfig
 
 
 SERVICE_PORT = int(os.getenv("CHUNK_SERVICE_PORT", "8001"))
@@ -530,7 +540,7 @@ async def chunk_from_output_json(request: Dict[str, Any]):
         if not result_key or result_key not in results:
             if results:
                 result_key = list(results.keys())[0]
-                print(f"ℹ未指定 result_key，使用第一个键: {result_key}")
+                logger.info("未指定 result_key，使用第一个键: %s", result_key)
             else:
                 raise HTTPException(status_code=400, detail="results 为空")
         
@@ -538,9 +548,9 @@ async def chunk_from_output_json(request: Dict[str, Any]):
         
         # 打印输入数据信息
         if 'images' in result_data:
-            print(f"  - Images 数量: {len(result_data['images'])}")
+            logger.info("Images 数量: %d", len(result_data["images"]))
         if 'page_images' in result_data:
-            print(f"  - Page images 数量: {len(result_data['page_images'])}")
+            logger.info("Page images 数量: %d", len(result_data["page_images"]))
         
         markdown = result_data.get("md_content")
         
@@ -592,33 +602,33 @@ async def chunk_from_output_json(request: Dict[str, Any]):
         output_json["results"][result_key]["chunking_config"] = config_dict
         output_json["results"][result_key]["chunk_stats"] = chunk_stats
         
-        print("\n" + "="*80)
-        print("✅ OCR 2.0 切分完成")
-        print("="*80)
-        print(f"📊 切分统计:")
-        print(f"  - 总 chunks: {chunk_stats['total_chunks']}")
-        print(f"  - 跨页桥接 chunks: {chunk_stats['bridge_chunks']}")
-        print(f"  - 跨页普通 chunks: {chunk_stats['cross_page_chunks']}")
-        print(f"  - 单页 chunks: {chunk_stats['single_page_chunks']}")
-        print(f"  - 表格 chunks: {chunk_stats['table_chunks']}")
-        print(f"  - 平均长度: {chunk_stats['avg_chunk_length']:.0f} 字符")
+        logger.info("=" * 80)
+        logger.info("OCR 2.0 切分完成")
+        logger.info("=" * 80)
+        logger.info("切分统计:")
+        logger.info("总 chunks: %d", chunk_stats["total_chunks"])
+        logger.info("跨页桥接 chunks: %d", chunk_stats["bridge_chunks"])
+        logger.info("跨页普通 chunks: %d", chunk_stats["cross_page_chunks"])
+        logger.info("单页 chunks: %d", chunk_stats["single_page_chunks"])
+        logger.info("表格 chunks: %d", chunk_stats["table_chunks"])
+        logger.info("平均长度: %.0f 字符", chunk_stats["avg_chunk_length"])
         
         # 打印前3个 chunks 的详细信息
-        print(f"\n📝 前 3 个 chunks 详情:")
+        logger.info("前 3 个 chunks 详情:")
         for i, chunk in enumerate(chunks[:3]):
-            print(f"  Chunk {i+1}:")
-            print(f"    - 页码: {chunk['page_start']}-{chunk['page_end']} (涉及页: {chunk['pages']})")
-            print(f"    - 长度: {chunk['text_length']} 字符")
-            print(f"    - 跨页: {chunk.get('continued', False)}")
-            print(f"    - 桥接: {chunk.get('cross_page_bridge', False)}")
-            print(f"    - 表格: {chunk.get('is_table_like', False)}")
+            logger.info("Chunk %d:", i+1)
+            logger.info("  页码: %d-%d (涉及页: %s)", chunk["page_start"], chunk["page_end"], chunk["pages"])
+            logger.info("  长度: %d 字符", chunk["text_length"])
+            logger.info("  跨页: %s", chunk.get("continued", False))
+            logger.info("  桥接: %s", chunk.get("cross_page_bridge", False))
+            logger.info("  表格: %s", chunk.get("is_table_like", False))
             if 'headers' in chunk:
-                print(f"    - 标题: {chunk['headers']}")
-            print(f"    - 文本预览: {chunk['text'][:80]}...")
+                logger.info("  标题: %s", chunk["headers"])
+            logger.info("  文本预览: %s...", chunk["text"][:80])
         
-        print("\n" + "="*80)
-        print(f"✅ 返回数据包含: {list(output_json['results'][result_key].keys())}")
-        print("="*80 + "\n")
+        logger.info("=" * 80)
+        logger.info("返回数据包含: %s", list(output_json["results"][result_key].keys()))
+        logger.info("=" * 80)
         
         return output_json
         
@@ -626,7 +636,7 @@ async def chunk_from_output_json(request: Dict[str, Any]):
         raise
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        logger.error("切分失败", exc_info=True)
         raise HTTPException(status_code=500, detail=f"切分失败: {str(e)}")
 
 # ==================== 启动配置 ====================

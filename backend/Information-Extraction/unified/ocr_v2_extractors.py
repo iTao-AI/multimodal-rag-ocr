@@ -8,11 +8,14 @@ import json
 import requests
 import tempfile
 import base64
+import logging
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # PIL 图像处理
 try:
@@ -20,7 +23,7 @@ try:
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
-    print("警告: PIL 未安装，可视化功能将不可用")
+    logger.info("警告: PIL 未安装，可视化功能将不可用")
 
 # pypdfium2 PDF渲染
 try:
@@ -28,7 +31,7 @@ try:
     PYPDFIUM2_AVAILABLE = True
 except ImportError:
     PYPDFIUM2_AVAILABLE = False
-    print("警告: pypdfium2 未安装，PDF渲染功能将不可用")
+    logger.info("警告: pypdfium2 未安装，PDF渲染功能将不可用")
 
 # 加载环境变量
 env_path = Path(__file__).parent.parent.parent.parent / '.env'
@@ -172,9 +175,9 @@ class MinerUExtractor(BaseOCRExtractor):
                         viz_paths
                     )
                     
-                    print(f"[MinerU] 已编码 {len(page_images_list)} 张页面图片, {len(images_dict)} 张裁切图片")
+                    logger.info(f"[MinerU] 已编码 {len(page_images_list)} 张页面图片, {len(images_dict)} 张裁切图片")
                 except Exception as img_error:
-                    print(f"[MinerU] 图片编码失败（不影响主流程）: {img_error}")
+                    logger.error(f"[MinerU] 图片编码失败（不影响主流程）: {img_error}")
             
             # 5. 返回结果
             return {
@@ -264,7 +267,7 @@ class MinerUExtractor(BaseOCRExtractor):
             return viz_paths
             
         except Exception as e:
-            print(f"可视化生成失败: {e}")
+            logger.error(f"可视化生成失败: {e}")
             return []
     
     def _overlay_annotations(
@@ -387,7 +390,7 @@ class MinerUExtractor(BaseOCRExtractor):
             img.save(out_path, "JPEG", quality=92)
             
         except Exception as e:
-            print(f"标注失败: {e}")
+            logger.error(f"标注失败: {e}")
             import traceback
             traceback.print_exc()
             img.save(out_path, "JPEG", quality=92)
@@ -453,7 +456,7 @@ class MinerUExtractor(BaseOCRExtractor):
                     img_base64 = base64.b64encode(f.read()).decode('utf-8')
                     page_images.append(img_base64)
             except Exception as e:
-                print(f"编码页面图片失败 {annotated_path}: {e}")
+                logger.error(f"编码页面图片失败 {annotated_path}: {e}")
         
         return page_images
     
@@ -550,7 +553,7 @@ class MinerUExtractor(BaseOCRExtractor):
                 images_dict[img_path_str] = img_base64
                 
             except Exception as e:
-                print(f"裁切图片失败 {img_path_str}: {e}")
+                logger.error(f"裁切图片失败 {img_path_str}: {e}")
         
         return images_dict
     
@@ -666,8 +669,8 @@ class PaddleOCRExtractor(BaseOCRExtractor):
     async def extract(self, pdf_path: Path) -> Dict[str, Any]:
         """使用PaddleOCR-VL提取PDF（MinerU格式）"""
         try:
-            print(f"[PaddleOCR-VL] 开始处理: {pdf_path.name}")
-            print(f"[PaddleOCR-VL] 调用API: {self.api_url}")
+            logger.info(f"[PaddleOCR-VL] 开始处理: {pdf_path.name}")
+            logger.info(f"[PaddleOCR-VL] 调用API: {self.api_url}")
             
             # 1. 调用PaddleOCR-VL API
             with open(pdf_path, 'rb') as f:
@@ -714,20 +717,20 @@ class PaddleOCRExtractor(BaseOCRExtractor):
             total_pages = len(model_output) if model_output else 0
             total_images = self._count_images_from_content_list(content_list)
             
-            print(f"[PaddleOCR-VL] 解析完成: {total_pages}页, {total_images}张图片")
-            print(f"  - model_output 页数: {len(model_output)}")
-            print(f"  - content_list 条目: {len(content_list)}")
-            print(f"  - images 数量: {len(images)}")
-            print(f"  - page_images 数量: {len(page_images)}")
+            logger.info(f"[PaddleOCR-VL] 解析完成: {total_pages}页, {total_images}张图片")
+            logger.info(f"  - model_output 页数: {len(model_output)}")
+            logger.info(f"  - content_list 条目: {len(content_list)}")
+            logger.info(f"  - images 数量: {len(images)}")
+            logger.info(f"  - page_images 数量: {len(page_images)}")
             
             # 3. 保存可视化图片
             viz_paths = []
             if page_images:
                 try:
                     viz_paths = self._save_page_images(pdf_path, page_images)
-                    print(f"[PaddleOCR-VL] 已保存 {len(viz_paths)} 张可视化图片")
+                    logger.info(f"[PaddleOCR-VL] 已保存 {len(viz_paths)} 张可视化图片")
                 except Exception as viz_error:
-                    print(f"[PaddleOCR-VL] 保存可视化图片失败（不影响主流程）: {viz_error}")
+                    logger.error(f"[PaddleOCR-VL] 保存可视化图片失败（不影响主流程）: {viz_error}")
             
             # 4. 返回结果（与MinerU保持一致的格式）
             return {
@@ -799,12 +802,12 @@ class PaddleOCRExtractor(BaseOCRExtractor):
                     })
                     
                 except Exception as e:
-                    print(f"[PaddleOCR-VL] 保存页面图片 {idx} 失败: {e}")
+                    logger.error(f"[PaddleOCR-VL] 保存页面图片 {idx} 失败: {e}")
             
             return viz_paths
             
         except Exception as e:
-            print(f"[PaddleOCR-VL] 保存页面图片失败: {e}")
+            logger.error(f"[PaddleOCR-VL] 保存页面图片失败: {e}")
             return []
 
 
@@ -884,20 +887,20 @@ class DeepSeekOCRExtractor(BaseOCRExtractor):
             total_pages = len(middle_json.get("pdf_info", [])) if middle_json else 0
             total_images = self._count_images_from_content_list(content_list)
             
-            print(f"[DeepSeek OCR] 解析完成: {total_pages}页, {total_images}张图片")
-            print(f"  - model_output 页数: {len(model_output)}")
-            print(f"  - content_list 条目: {len(content_list)}")
-            print(f"  - images 数量: {len(images)}")
-            print(f"  - page_images 数量: {len(page_images)}")
+            logger.info(f"[DeepSeek OCR] 解析完成: {total_pages}页, {total_images}张图片")
+            logger.info(f"  - model_output 页数: {len(model_output)}")
+            logger.info(f"  - content_list 条目: {len(content_list)}")
+            logger.info(f"  - images 数量: {len(images)}")
+            logger.info(f"  - page_images 数量: {len(page_images)}")
             
             # 3. 保存带框的页面图片（可选）
             viz_paths = []
             if page_images and self.draw_bbox:
                 try:
                     viz_paths = self._save_page_images(pdf_path, page_images)
-                    print(f"[DeepSeek OCR] 已保存 {len(viz_paths)} 张带框页面图片")
+                    logger.info(f"[DeepSeek OCR] 已保存 {len(viz_paths)} 张带框页面图片")
                 except Exception as viz_error:
-                    print(f"[DeepSeek OCR] 保存页面图片失败（不影响主流程）: {viz_error}")
+                    logger.error(f"[DeepSeek OCR] 保存页面图片失败（不影响主流程）: {viz_error}")
             
             # 4. 返回结果（与MinerU保持一致的格式）
             return {
@@ -976,12 +979,12 @@ class DeepSeekOCRExtractor(BaseOCRExtractor):
                     })
                     
                 except Exception as e:
-                    print(f"[DeepSeek OCR] 保存页面图片 {idx} 失败: {e}")
+                    logger.error(f"[DeepSeek OCR] 保存页面图片 {idx} 失败: {e}")
             
             return viz_paths
             
         except Exception as e:
-            print(f"[DeepSeek OCR] 保存页面图片失败: {e}")
+            logger.error(f"[DeepSeek OCR] 保存页面图片失败: {e}")
             return []
 
 

@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import uuid
+import logging
 from typing import List, Dict, Any, Optional, AsyncIterable
 from datetime import datetime
 
@@ -29,6 +30,8 @@ if _backend_dir not in sys.path:
 from common.cache_manager import get_cache_manager
 from chat.query_rewrite import get_query_rewrite_service
 from Database.milvus_server.hybrid_search import hybrid_rerank
+
+logger = logging.getLogger(__name__)
 
 # 检索增强配置
 HYBRID_SEARCH_ENABLED = os.getenv("HYBRID_SEARCH_ENABLED", "true").lower() == "true"
@@ -106,6 +109,12 @@ class ChatResponse(BaseModel):
 
 # ============ 对话服务 ============
 
+try:
+    from common.logging_config import setup_logging
+    setup_logging("rag-chat")
+except Exception:
+    pass
+
 class ChatService:
     """RAG对话服务"""
 
@@ -150,7 +159,7 @@ class ChatService:
                 "top_k": top_k
             }
             
-            print(f"正在从Milvus召回文档: {url}")
+            logger.info("正在从Milvus召回文档: %s", url)
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
@@ -177,7 +186,7 @@ class ChatService:
                 if doc["score"] >= score_threshold
             ]
             
-            print(f"✓ 召回 {len(documents)} 个文档，过滤后保留 {len(filtered_docs)} 个")
+            logger.info("召回 %d 个文档，过滤后保留 %d 个", len(documents), len(filtered_docs))
             return filtered_docs
             
         except httpx.HTTPError as e:
@@ -204,7 +213,7 @@ class ChatService:
             
             rerank_start = time.time()
             model_name = reranker_config.model_name.lower()
-            print(f"正在使用重排序模型: {reranker_config.model_name}")
+            logger.info("正在使用重排序模型: %s", reranker_config.model_name)
             
             # 准备文档文本列表
             doc_texts = [doc["chunk_text"] for doc in documents]
@@ -363,7 +372,7 @@ class ChatService:
             
             else:
                 # ============ 通用格式（尝试自动适配） ============
-                print(f"⚠️ 未识别的模型类型，尝试通用格式")
+                logger.warning("未识别的模型类型，尝试通用格式")
                 
                 rerank_payload = {
                     "model": reranker_config.model_name,
@@ -401,15 +410,15 @@ class ChatService:
                     raise ValueError(f"无法解析重排序响应: {result}")
             
             rerank_time = time.time() - rerank_start
-            print(f"✓ 重排序完成，保留 {len(reranked_docs)} 个文档 (耗时: {rerank_time:.2f}秒)")
+            logger.info("重排序完成，保留 %d 个文档 (耗时: %.2f秒)", len(reranked_docs), rerank_time)
             
             return reranked_docs
             
         except Exception as e:
             import traceback
-            print(f"⚠️ 重排序失败: {str(e)}")
-            print(f"⚠️ 错误详情:\n{traceback.format_exc()}")
-            print(f"⚠️ 降级使用原始召回排序")
+            logger.warning("重排序失败: %s", str(e))
+            logger.error("重排序错误详情: %s", traceback.format_exc())
+            logger.warning("降级使用原始召回排序")
             
             # 重排序失败时，保留原始排序的前 top_n 个文档
             fallback_docs = []
@@ -530,7 +539,7 @@ class ChatService:
             cache = get_cache_manager()
             cached = cache.get_query_result(request.collection_name, request.query)
             if cached:
-                print(f"✓ 缓存命中: {request.query[:50]}...")
+                logger.info("缓存命中: %s...", request.query[:50])
                 answer = cached["answer"]
                 sources_data = cached.get("sources", [])
 
@@ -563,9 +572,9 @@ class ChatService:
                     qr_service = get_query_rewrite_service()
                     queries = await qr_service.rewrite_query(request.query)
                     rewrite_time = time.time() - rewrite_start
-                    print(f"✓ 查询改写完成: {len(queries)} 个变体")
+                    logger.info("查询改写完成: %d 个变体", len(queries))
                 except Exception as e:
-                    print(f"⚠️ 查询改写失败，使用原始查询: {e}")
+                    logger.warning("查询改写失败，使用原始查询: %s", str(e))
                     queries = [request.query]
 
             # 2. 多路召回 (对每个改写查询检索，合并结果)
@@ -590,7 +599,7 @@ class ChatService:
 
             if not documents:
                 # 没有找到相关文档，直接用LLM回答
-                print("⚠️ 未找到相关文档，使用LLM直接回答")
+                logger.warning("未找到相关文档，使用LLM直接回答")
                 messages = []
                 
                 # 添加历史对话
@@ -633,7 +642,7 @@ class ChatService:
                     reranker_config=request.reranker_config
                 )
                 rerank_time = time.time() - rerank_start
-                print(f"✓ 重排序耗时: {rerank_time:.2f}秒")
+                logger.info("重排序耗时: %.2f秒", rerank_time)
             else:
                 rerank_time = 0
 
@@ -649,7 +658,7 @@ class ChatService:
                     final_top_k=HYBRID_FINAL_TOP_K,
                 )
                 hybrid_time = time.time() - hybrid_start
-                print(f"✓ BM25 混合检索耗时: {hybrid_time:.2f}秒")
+                logger.info("BM25 混合检索耗时: %.2f秒", hybrid_time)
 
             # 3. 构建上下文
             context = self.format_context(documents)
@@ -715,7 +724,7 @@ class ChatService:
                     {"answer": answer_text, "sources": sources if request.return_source and documents else []},
                 )
             except Exception as e:
-                print(f"⚠️ 缓存写入失败: {e}")
+                logger.warning("缓存写入失败: %s", str(e))
 
             # 8. 返回元数据
             total_time = time.time() - start_time
@@ -733,21 +742,21 @@ class ChatService:
                 }
             }, ensure_ascii=False) + "\n"
 
-            print(f"\n{'='*60}")
-            print(f"✓ RAG对话完成")
-            print(f"  - 查询改写耗时: {rewrite_time:.2f}秒")
-            print(f"  - 召回耗时: {retrieve_time:.2f}秒")
-            print(f"  - 重排序耗时: {rerank_time:.2f}秒")
-            print(f"  - BM25混合检索耗时: {hybrid_time:.2f}秒")
-            print(f"  - LLM耗时: {llm_time:.2f}秒")
-            print(f"  - 总耗时: {total_time:.2f}秒")
-            print(f"  - 文档数量: {len(documents)}")
-            print(f"{'='*60}\n")
+            logger.info("=" * 60)
+            logger.info("RAG对话完成")
+            logger.info("查询改写耗时: %.2f秒", rewrite_time)
+            logger.info("召回耗时: %.2f秒", retrieve_time)
+            logger.info("重排序耗时: %.2f秒", rerank_time)
+            logger.info("BM25混合检索耗时: %.2f秒", hybrid_time)
+            logger.info("LLM耗时: %.2f秒", llm_time)
+            logger.info("总耗时: %.2f秒", total_time)
+            logger.info("文档数量: %d", len(documents))
+            logger.info("=" * 60)
             
         except Exception as e:
             import traceback
             error_trace = traceback.format_exc()
-            print(f"❌ RAG对话失败: {error_trace}")
+            logger.error("RAG对话失败: %s", error_trace)
             yield json.dumps({
                 "type": "error",
                 "data": {
@@ -766,15 +775,15 @@ class ChatService:
         start_time = time.time()
 
         try:
-            print(f"\n{'='*60}")
-            print(f"开始RAG对话流程（非流式）")
-            print(f"{'='*60}\n")
+            logger.info("=" * 60)
+            logger.info("开始RAG对话流程（非流式）")
+            logger.info("=" * 60)
 
             # 0. 缓存检查
             cache = get_cache_manager()
             cached = cache.get_query_result(request.collection_name, request.query)
             if cached:
-                print(f"✓ 缓存命中: {request.query[:50]}...")
+                logger.info("缓存命中: %s...", request.query[:50])
                 return ChatResponse(
                     success=True,
                     message="对话完成（缓存）",
@@ -801,9 +810,9 @@ class ChatService:
                     qr_service = get_query_rewrite_service()
                     queries = await qr_service.rewrite_query(request.query)
                     rewrite_time = time.time() - rewrite_start
-                    print(f"✓ 查询改写完成: {len(queries)} 个变体")
+                    logger.info("查询改写完成: %d 个变体", len(queries))
                 except Exception as e:
-                    print(f"⚠️ 查询改写失败，使用原始查询: {e}")
+                    logger.warning("查询改写失败，使用原始查询: %s", str(e))
                     queries = [request.query]
 
             # 2. 多路召回
@@ -828,7 +837,7 @@ class ChatService:
 
             if not documents:
                 # 没有找到相关文档，直接用LLM回答
-                print("⚠️ 未找到相关文档，使用LLM直接回答")
+                logger.warning("未找到相关文档，使用LLM直接回答")
                 messages = []
                 
                 for msg in request.history:
@@ -880,7 +889,7 @@ class ChatService:
                     final_top_k=HYBRID_FINAL_TOP_K,
                 )
                 hybrid_time = time.time() - hybrid_start
-                print(f"✓ BM25 混合检索耗时: {hybrid_time:.2f}秒")
+                logger.info("BM25 混合检索耗时: %.2f秒", hybrid_time)
 
             # 3. 构建上下文
             context = self.format_context(documents)
@@ -935,21 +944,21 @@ class ChatService:
                     },
                 )
             except Exception as e:
-                print(f"⚠️ 缓存写入失败: {e}")
+                logger.warning("缓存写入失败: %s", str(e))
 
             # 9. 返回结果
             total_time = time.time() - start_time
 
-            print(f"\n{'='*60}")
-            print(f"✓ RAG对话完成")
-            print(f"  - 查询改写耗时: {rewrite_time:.2f}秒")
-            print(f"  - 召回耗时: {retrieve_time:.2f}秒")
-            print(f"  - 重排序耗时: {rerank_time:.2f}秒")
-            print(f"  - BM25混合检索耗时: {hybrid_time:.2f}秒")
-            print(f"  - LLM耗时: {llm_time:.2f}秒")
-            print(f"  - 总耗时: {total_time:.2f}秒")
-            print(f"  - 文档数量: {len(documents)}")
-            print(f"{'='*60}\n")
+            logger.info("=" * 60)
+            logger.info("RAG对话完成")
+            logger.info("查询改写耗时: %.2f秒", rewrite_time)
+            logger.info("召回耗时: %.2f秒", retrieve_time)
+            logger.info("重排序耗时: %.2f秒", rerank_time)
+            logger.info("BM25混合检索耗时: %.2f秒", hybrid_time)
+            logger.info("LLM耗时: %.2f秒", llm_time)
+            logger.info("总耗时: %.2f秒", total_time)
+            logger.info("文档数量: %d", len(documents))
+            logger.info("=" * 60)
 
             return ChatResponse(
                 success=True,
@@ -971,7 +980,7 @@ class ChatService:
         except Exception as e:
             import traceback
             error_trace = traceback.format_exc()
-            print(f"❌ RAG对话失败: {error_trace}")
+            logger.error("RAG对话失败: %s", error_trace)
             raise HTTPException(
                 status_code=500,
                 detail=f"对话失败: {str(e)}"
@@ -1091,12 +1100,12 @@ if __name__ == "__main__":
     host = os.getenv("SERVER_HOST", "0.0.0.0")
     port = int(os.getenv("SERVER_PORT", "8501"))
     
-    print("\n" + "="*60)
-    print("启动RAG对话服务")
-    print("="*60)
-    print(f"服务地址: http://{host}:{port}")
-    print(f"API文档: http://{host}:{port}/docs")
-    print("="*60 + "\n")
+    logger.info("=" * 60)
+    logger.info("启动RAG对话服务")
+    logger.info("=" * 60)
+    logger.info("服务地址: http://%s:%d", host, port)
+    logger.info("API文档: http://%s:%d/docs", host, port)
+    logger.info("=" * 60)
     
     uvicorn.run(
         app,

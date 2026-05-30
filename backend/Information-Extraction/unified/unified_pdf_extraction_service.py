@@ -2,11 +2,11 @@
 PDF提取服务 - FastAPI接口版本
 支持快速模式和精确模式的HTTP API调用
 """
-from dataclasses import dataclass
 import io
 import base64
 import asyncio
 import json
+import logging
 import re
 import tempfile
 import shutil
@@ -15,23 +15,33 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException 
-from fastapi.responses import JSONResponse, FileResponse 
-from fastapi.middleware.cors import CORSMiddleware 
-from fastapi.staticfiles import StaticFiles 
-from pydantic import BaseModel 
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 import pymupdf4llm
-import fitz 
-from PIL import Image 
+import fitz
+from PIL import Image
 from pdf2image import convert_from_bytes
-import uvicorn 
-import httpx 
+import uvicorn
+import httpx
 from llm_extraction import PAGES_PER_REQUEST, CONCURRENT_REQUESTS
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
 
 # 加载 backend/.env 文件
 env_path = Path(__file__).parent.parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path, override=True)
+
+# 初始化日志
+import sys
+_backend_dir = os.path.join(os.path.dirname(__file__), os.pardir)
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+from common.logging_config import setup_logging
+
+logger = logging.getLogger(__name__)
+setup_logging("rag-extraction")
 
 # ============ 配置 ============
 
@@ -84,13 +94,13 @@ MINERU_VIZ_DIR = Path(os.getenv(
 MINERU_VIZ_DIR.mkdir(parents=True, exist_ok=True)
 
 
-print(f"配置加载完成:")
-print(f"  - 上传目录: {UPLOAD_BASE_DIR}")
-print(f"  - 提取结果目录: {EXTRACTION_RESULTS_DIR}")
-print(f"  - 文件大小限制: {MAX_FILE_SIZE_MB}MB")
-print(f"  - 服务地址: {SERVICE_HOST}:{SERVICE_PORT}")
-print(f"  - 切分服务: {'启用' if CHUNKING_SERVICE_ENABLED else '禁用'} ({CHUNKING_SERVICE_URL})")
-print(f"  - Milvus API服务: {'启用' if MILVUS_API_ENABLED else '禁用'} ({MILVUS_API_URL})")
+logger.info("配置加载完成")
+logger.info("上传目录: %s", UPLOAD_BASE_DIR)
+logger.info("提取结果目录: %s", EXTRACTION_RESULTS_DIR)
+logger.info("文件大小限制: %dMB", MAX_FILE_SIZE_MB)
+logger.info("服务地址: %s:%s", SERVICE_HOST, SERVICE_PORT)
+logger.info("切分服务: %s (%s)", '启用' if CHUNKING_SERVICE_ENABLED else '禁用', CHUNKING_SERVICE_URL)
+logger.info("Milvus API服务: %s (%s)", '启用' if MILVUS_API_ENABLED else '禁用', MILVUS_API_URL)
 
 # ============ 数据模型 ============
 
@@ -353,17 +363,17 @@ class PDFExtractionService:
         
         # 优先使用原始文件名，否则从路径提取
         filename = original_filename or Path(pdf_path).name
-        print(f"filename: {filename}")
+        logger.info(f"filename: {filename}")
         
-        print(f"开始处理PDF: {pdf_path}")
-        print("="*60)
+        logger.info(f"开始处理PDF: {pdf_path}")
+        logger.info("="*60)
         
         # PDF转图片
         convert_start = time.time()
         images = self.pdf_to_images(pdf_path)
         self.pdf_convert_time = time.time() - convert_start
         total_pages = len(images)
-        print(f"PDF转换完成: {total_pages} 页 (耗时: {self.pdf_convert_time:.2f}秒)")
+        logger.info(f"PDF转换完成: {total_pages} 页 (耗时: {self.pdf_convert_time:.2f}秒)")
         
         # 批量处理页面
         per_page_results = []
@@ -412,14 +422,14 @@ class PDFExtractionService:
             "total_time": round(self.total_time, 2)
         }
         
-        print("\n" + "="*60)
-        print("✓ 提取完成")
-        print(f"  总页数: {total_pages}")
-        print(f"  表格数: {len(all_tables)}")
-        print(f"  公式数: {len(all_formulas)}")
-        print(f"  Token使用: {self.total_tokens:,} (提示: {self.total_prompt_tokens:,}, 完成: {self.total_completion_tokens:,})")
-        print(f"  耗时: PDF转换 {self.pdf_convert_time:.2f}s + API调用 {self.api_call_time:.2f}s = 总计 {self.total_time:.2f}s")
-        print("="*60 + "\n")
+        logger.info("\n" + "="*60)
+        logger.info("提取完成")
+        logger.info(f"  总页数: {total_pages}")
+        logger.info(f"  表格数: {len(all_tables)}")
+        logger.info(f"  公式数: {len(all_formulas)}")
+        logger.info(f"  Token使用: {self.total_tokens:,} (提示: {self.total_prompt_tokens:,}, 完成: {self.total_completion_tokens:,})")
+        logger.info(f"  耗时: PDF转换 {self.pdf_convert_time:.2f}s + API调用 {self.api_call_time:.2f}s = 总计 {self.total_time:.2f}s")
+        logger.info("="*60 + "\n")
         
         return ExtractionResult(
             filename=filename,
@@ -683,10 +693,10 @@ async def call_milvus_api(
                 raise Exception(f"Milvus API返回失败: {result.get('message', 'unknown error')}")
 
     except httpx.HTTPError as e:
-        print(f"✗ 调用Milvus API失败: {e}")
+        logger.error(f"调用Milvus API失败: {e}")
         raise Exception(f"Milvus API调用失败: {str(e)}")
     except Exception as e:
-        print(f"✗ 存储到Milvus失败: {e}")
+        logger.error(f"存储到Milvus失败: {e}")
         raise
 
 
@@ -891,10 +901,10 @@ async def upload_pdf(
                                     'storage_file_id': storage_result.get('file_id')
                                 }
 
-                                print(f"✓ 成功存储 {storage_result.get('inserted_count')} 个chunks到Milvus")
+                                logger.info(f"成功存储 {storage_result.get('inserted_count')} 个chunks到Milvus")
 
                             except Exception as storage_error:
-                                print(f"✗ 存储到Milvus失败: {storage_error}")
+                                logger.error(f"存储到Milvus失败: {storage_error}")
                                 import traceback
                                 traceback.print_exc()
                                 response_data['storage'] = {
@@ -908,7 +918,7 @@ async def upload_pdf(
                             }
 
                     except Exception as chunk_error:
-                        print(f"✗ 自动切分失败: {chunk_error}")
+                        logger.error(f"自动切分失败: {chunk_error}")
                         import traceback
                         traceback.print_exc()
                         response_data['chunking'] = {
@@ -922,7 +932,7 @@ async def upload_pdf(
                     }
 
             except Exception as e:
-                print(f"✗ 自动提取失败: {e}")
+                logger.error(f"自动提取失败: {e}")
                 import traceback
                 traceback.print_exc()
                 response_data['extraction'] = {
@@ -946,7 +956,7 @@ async def upload_pdf(
         )
 
     except Exception as e:
-        print(f"文件上传失败: {e}")
+        logger.error(f"文件上传失败: {e}")
         import traceback
         traceback.print_exc()
 
@@ -1035,7 +1045,7 @@ async def upload_pdf_v2(
         file_path = upload_dir / f"{timestamp}_{file_id}_{safe_filename}"
 
         # 5. 保存文件
-        print(f"✓ 保存文件到: {file_path}")
+        logger.info(f"保存文件到: {file_path}")
         with open(file_path, 'wb') as f:
             f.write(content)
 
@@ -1054,7 +1064,7 @@ async def upload_pdf_v2(
 
         # 6. 如果启用了自动提取
         if auto_extract:
-            print(f"✓ 开始OCR 2.0提取，方法: {extraction_mode}")
+            logger.info(f"开始OCR 2.0提取，方法: {extraction_mode}")
             try:
                 # 创建OCR提取器
                 extractor = create_ocr_extractor(extraction_mode)
@@ -1085,7 +1095,7 @@ async def upload_pdf_v2(
                             }
                         }
                         json.dump(output_data, f, ensure_ascii=False, indent=2)
-                    print(f"  ✓ 保存完整数据: {output_json_file}")
+                    logger.info(f"  保存完整数据: {output_json_file}")
                 
                 # 3. 分开保存 layout_info 的各个部分（如果存在）
                 layout_info = extraction_result.get('layout_info', {})
@@ -1126,9 +1136,9 @@ async def upload_pdf_v2(
                         'layout_files': saved_layout_files  # 只保存文件路径引用
                     }, f, ensure_ascii=False, indent=2)
                 
-                print(f"✓ OCR 2.0提取完成 ({extraction_mode})")
-                print(f"  - 总页数: {extraction_result['total_pages']}")
-                print(f"  - 图片数: {extraction_result['total_images']}")
+                logger.info(f"OCR 2.0提取完成 ({extraction_mode})")
+                logger.info(f"  - 总页数: {extraction_result['total_pages']}")
+                logger.info(f"  - 图片数: {extraction_result['total_images']}")
                 
                 response_data['extraction'] = {
                     'status': 'completed',
@@ -1147,13 +1157,13 @@ async def upload_pdf_v2(
 
                 # 7. 如果启用了自动切分（OCR 2.0 使用新的切分流程）
                 if auto_chunk and CHUNKING_SERVICE_ENABLED:
-                    print("\n" + "="*80)
-                    print(f"🔧 OCR 2.0 自动切分")
-                    print("="*80)
-                    print(f"  - 切分方法: {chunking_method} (V2 方法)")
-                    print(f"  - Chunk 大小: {chunk_size}")
-                    print(f"  - 重叠: {chunk_overlap}")
-                    print(f"  - 最大跨页: {max_page_span}")
+                    logger.info("\n" + "="*80)
+                    logger.info("🔧 OCR 2.0 自动切分")
+                    logger.info("="*80)
+                    logger.info(f"  - 切分方法: {chunking_method} (V2 方法)")
+                    logger.info(f"  - Chunk 大小: {chunk_size}")
+                    logger.info(f"  - 重叠: {chunk_overlap}")
+                    logger.info(f"  - 最大跨页: {max_page_span}")
                     
                     try:
                         # 构建完整的 output.json 格式（符合 /chunk/v2 端点的要求）
@@ -1166,12 +1176,12 @@ async def upload_pdf_v2(
                             }
                         }
                         
-                        print(f"\n📦 准备调用切分服务:")
-                        print(f"  - URL: {CHUNKING_SERVICE_URL}/chunk/v2")
-                        print(f"  - Result Key: {result_key}")
-                        print(f"  - Output JSON 包含字段: {list(raw_data.keys())}")
-                        print(f"  - 是否有 images: {'images' in raw_data}")
-                        print(f"  - 是否有 page_images: {'page_images' in raw_data}")
+                        logger.info("\n📦 准备调用切分服务:")
+                        logger.info(f"  - URL: {CHUNKING_SERVICE_URL}/chunk/v2")
+                        logger.info(f"  - Result Key: {result_key}")
+                        logger.info(f"  - Output JSON 包含字段: {list(raw_data.keys())}")
+                        logger.info(f"  - 是否有 images: {'images' in raw_data}")
+                        logger.info(f"  - 是否有 page_images: {'page_images' in raw_data}")
                         
                         # 调用切分服务 v2 端点
                         chunk_url = f"{CHUNKING_SERVICE_URL}/chunk/v2"
@@ -1189,11 +1199,11 @@ async def upload_pdf_v2(
                             }
                         }
 
-                        print(f"\n🌐 调用切分服务...")
+                        logger.info("\n🌐 调用切分服务...")
                         async with httpx.AsyncClient(timeout=300.0) as client:
                             chunk_response = await client.post(chunk_url, json=chunk_payload)
                         
-                        print(f"  - 响应状态码: {chunk_response.status_code}")
+                        logger.info(f"  - 响应状态码: {chunk_response.status_code}")
 
                         if chunk_response.status_code == 200:
                             chunked_output_json = chunk_response.json()
@@ -1208,30 +1218,30 @@ async def upload_pdf_v2(
                             with open(chunked_output_file, 'w', encoding='utf-8') as f:
                                 json.dump(chunked_output_json, f, ensure_ascii=False, indent=2)
                             
-                            print("\n" + "="*80)
-                            print("✅ OCR 2.0 切分完成")
-                            print("="*80)
-                            print(f"📊 切分统计:")
-                            print(f"  - 总 chunks: {len(chunks)}")
-                            print(f"  - 跨页桥接: {chunk_stats.get('bridge_chunks', 0)}")
-                            print(f"  - 跨页普通: {chunk_stats.get('cross_page_chunks', 0)}")
-                            print(f"  - 单页块: {chunk_stats.get('single_page_chunks', 0)}")
-                            print(f"  - 表格块: {chunk_stats.get('table_chunks', 0)}")
-                            print(f"  - 平均长度: {chunk_stats.get('avg_chunk_length', 0):.0f} 字符")
+                            logger.info("\n" + "="*80)
+                            logger.info("✅ OCR 2.0 切分完成")
+                            logger.info("="*80)
+                            logger.info("📊 切分统计:")
+                            logger.info(f"  - 总 chunks: {len(chunks)}")
+                            logger.info(f"  - 跨页桥接: {chunk_stats.get('bridge_chunks', 0)}")
+                            logger.info(f"  - 跨页普通: {chunk_stats.get('cross_page_chunks', 0)}")
+                            logger.info(f"  - 单页块: {chunk_stats.get('single_page_chunks', 0)}")
+                            logger.info(f"  - 表格块: {chunk_stats.get('table_chunks', 0)}")
+                            logger.info(f"  - 平均长度: {chunk_stats.get('avg_chunk_length', 0):.0f} 字符")
                             
-                            print(f"\n💾 保存文件:")
-                            print(f"  - 切分结果: {chunked_output_file}")
+                            logger.info("\n💾 保存文件:")
+                            logger.info(f"  - 切分结果: {chunked_output_file}")
                             
                             # 打印前2个 chunks 的详细信息
-                            print(f"\n📝 前 2 个 chunks 预览:")
+                            logger.info("\n📝 前 2 个 chunks 预览:")
                             for i, chunk in enumerate(chunks[:2]):
-                                print(f"  Chunk {i+1}:")
-                                print(f"    - 页码: {chunk['page_start']}-{chunk['page_end']}")
-                                print(f"    - 长度: {chunk['text_length']} 字符")
-                                print(f"    - 跨页: {chunk.get('continued', False)}")
-                                print(f"    - 桥接: {chunk.get('cross_page_bridge', False)}")
-                                print(f"    - 文本: {chunk['text'][:60]}...")
-                            print("="*80 + "\n")
+                                logger.info(f"  Chunk {i+1}:")
+                                logger.info(f"    - 页码: {chunk['page_start']}-{chunk['page_end']}")
+                                logger.info(f"    - 长度: {chunk['text_length']} 字符")
+                                logger.info(f"    - 跨页: {chunk.get('continued', False)}")
+                                logger.info(f"    - 桥接: {chunk.get('cross_page_bridge', False)}")
+                                logger.info(f"    - 文本: {chunk['text'][:60]}...")
+                            logger.info("="*80 + "\n")
                             
                             response_data['chunking'] = {
                                 'status': 'completed',
@@ -1245,11 +1255,11 @@ async def upload_pdf_v2(
 
                             # 8. 如果有知识库ID且启用了Milvus，存储到向量数据库（使用 V2 端点）
                             if knowledge_base_id and MILVUS_API_ENABLED:
-                                print("\n" + "="*80)
-                                print(f"🗄️  OCR 2.0 向量数据库存储")
-                                print("="*80)
-                                print(f"  - Collection: {knowledge_base_id}")
-                                print(f"  - Chunks数量: {len(chunks)}")
+                                logger.info("\n" + "="*80)
+                                logger.info("🗄️  OCR 2.0 向量数据库存储")
+                                logger.info("="*80)
+                                logger.info(f"  - Collection: {knowledge_base_id}")
+                                logger.info(f"  - Chunks数量: {len(chunks)}")
                                 
                                 try:
                                     # 调用 Milvus API V2 端点
@@ -1261,28 +1271,28 @@ async def upload_pdf_v2(
                                         'result_key': result_key
                                     }
                                     
-                                    print(f"\n🌐 调用 Milvus API V2...")
-                                    print(f"  - URL: {storage_url}")
-                                    print(f"  - Collection: {knowledge_base_id}")
-                                    print(f"  - File ID: {file_id}")
-                                    print(f"  - Result Key: {result_key}")
+                                    logger.info("\n🌐 调用 Milvus API V2...")
+                                    logger.info(f"  - URL: {storage_url}")
+                                    logger.info(f"  - Collection: {knowledge_base_id}")
+                                    logger.info(f"  - File ID: {file_id}")
+                                    logger.info(f"  - Result Key: {result_key}")
                                     
                                     async with httpx.AsyncClient(timeout=300.0) as client:
                                         storage_response = await client.post(storage_url, json=storage_payload)
                                     
-                                    print(f"  - 响应状态码: {storage_response.status_code}")
+                                    logger.info(f"  - 响应状态码: {storage_response.status_code}")
                                     
                                     if storage_response.status_code == 200:
                                         storage_result = storage_response.json()
                                         
-                                        print("\n" + "="*80)
-                                        print("✅ OCR 2.0 数据存储完成")
-                                        print("="*80)
-                                        print(f"  - 状态: {storage_result.get('status')}")
-                                        print(f"  - 插入数量: {storage_result.get('chunks_count')}")
-                                        print(f"  - Backend: {storage_result.get('backend')}")
-                                        print(f"  - Version: {storage_result.get('version')}")
-                                        print("="*80 + "\n")
+                                        logger.info("\n" + "="*80)
+                                        logger.info("✅ OCR 2.0 数据存储完成")
+                                        logger.info("="*80)
+                                        logger.info(f"  - 状态: {storage_result.get('status')}")
+                                        logger.info(f"  - 插入数量: {storage_result.get('chunks_count')}")
+                                        logger.info(f"  - Backend: {storage_result.get('backend')}")
+                                        logger.info(f"  - Version: {storage_result.get('version')}")
+                                        logger.info("="*80 + "\n")
                                         
                                         response_data['storage'] = {
                                             'status': 'completed',
@@ -1293,16 +1303,16 @@ async def upload_pdf_v2(
                                         }
                                     else:
                                         error_text = storage_response.text[:500] if storage_response.text else "No response"
-                                        print(f"\n❌ Milvus API 返回错误:")
-                                        print(f"  - 状态码: {storage_response.status_code}")
-                                        print(f"  - 错误: {error_text}")
+                                        logger.error("\n❌ Milvus API 返回错误:")
+                                        logger.info(f"  - 状态码: {storage_response.status_code}")
+                                        logger.error(f"  - 错误: {error_text}")
                                         response_data['storage'] = {
                                             'status': 'failed',
                                             'error': f'Milvus API 返回错误: {storage_response.status_code}, {error_text}'
                                         }
 
                                 except Exception as storage_error:
-                                    print(f"\n❌ 存储异常: {storage_error}")
+                                    logger.info(f"\n❌ 存储异常: {storage_error}")
                                     import traceback
                                     traceback.print_exc()
                                     response_data['storage'] = {
@@ -1317,17 +1327,17 @@ async def upload_pdf_v2(
 
                         else:
                             error_text = chunk_response.text[:500] if chunk_response.text else "No response body"
-                            print(f"\n❌ 切分服务返回错误:")
-                            print(f"  - 状态码: {chunk_response.status_code}")
-                            print(f"  - 错误信息: {error_text}")
+                            logger.error("\n❌ 切分服务返回错误:")
+                            logger.info(f"  - 状态码: {chunk_response.status_code}")
+                            logger.error(f"  - 错误信息: {error_text}")
                             response_data['chunking'] = {
                                 'status': 'failed',
                                 'error': f'切分服务返回错误: {chunk_response.status_code}, {error_text}'
                             }
 
                     except Exception as chunk_error:
-                        print(f"\n❌ 自动切分异常:")
-                        print(f"  - 错误: {chunk_error}")
+                        logger.info("\n❌ 自动切分异常:")
+                        logger.error(f"  - 错误: {chunk_error}")
                         import traceback
                         traceback.print_exc()
                         response_data['chunking'] = {
@@ -1341,7 +1351,7 @@ async def upload_pdf_v2(
                     }
 
             except Exception as e:
-                print(f"✗ OCR 2.0提取失败: {e}")
+                logger.error(f"OCR 2.0提取失败: {e}")
                 import traceback
                 traceback.print_exc()
                 response_data['extraction'] = {
@@ -1366,7 +1376,7 @@ async def upload_pdf_v2(
         )
 
     except Exception as e:
-        print(f"文件上传失败 (OCR 2.0): {e}")
+        logger.error(f"文件上传失败 (OCR 2.0): {e}")
         import traceback
         traceback.print_exc()
 
@@ -1392,7 +1402,7 @@ async def extract_fast(file: UploadFile = File(...)):
     temp_file = None
     try:
         # 打印上传的文件名
-        print(f"收到文件: {file.filename}")
+        logger.info(f"收到文件: {file.filename}")
         
         # 保存上传的文件到临时位置
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
@@ -1417,7 +1427,7 @@ async def extract_fast(file: UploadFile = File(...)):
         )
         
     except Exception as e:
-        print(f"快速提取失败: {e}")
+        logger.error(f"快速提取失败: {e}")
         import traceback
         traceback.print_exc()
         # 只返回文件名部分，不包含路径
@@ -1465,7 +1475,7 @@ async def extract_accurate(
     saved_file_path = None
 
     try:
-        print(f"收到文件: {file.filename}")
+        logger.info(f"收到文件: {file.filename}")
         safe_filename = Path(file.filename).name if file.filename else "unknown.pdf"
 
         # 读取文件内容
@@ -1484,7 +1494,7 @@ async def extract_accurate(
             with open(saved_file_path, 'wb') as f:
                 f.write(content)
 
-            print(f"✓ 文件已保存: {saved_file_path}")
+            logger.info(f"文件已保存: {saved_file_path}")
             extraction_file_path = str(saved_file_path)
         else:
             # 否则使用临时文件
@@ -1509,7 +1519,7 @@ async def extract_accurate(
                 filename=safe_filename,
                 result_data=result
             )
-            print(f"✓ 提取结果已保存到: {saved_paths['markdown']}")
+            logger.info(f"提取结果已保存到: {saved_paths['markdown']}")
 
             # 在返回数据中添加保存信息
             result['saved_info'] = {
@@ -1530,7 +1540,7 @@ async def extract_accurate(
         )
 
     except Exception as e:
-        print(f"精确提取失败: {e}")
+        logger.error(f"精确提取失败: {e}")
         import traceback
         traceback.print_exc()
 
@@ -1574,16 +1584,16 @@ async def debug_extract(pdf_path: str, mode: str = "fast", **kwargs):
     
     try:
         if mode == "fast":
-            print(f"开始快速模式提取: {pdf_path}")
+            logger.info(f"开始快速模式提取: {pdf_path}")
             result = await service.extract_fast(pdf_path)
-            print("提取完成，结果:")
-            print(f"  页数: {result['metadata']['total_pages']}")
-            print(f"  图片数: {result['metadata']['total_images']}")
-            print(f"  Markdown长度: {len(result['markdown'])} 字符")
+            logger.info("提取完成，结果:")
+            logger.info(f"  页数: {result['metadata']['total_pages']}")
+            logger.info(f"  图片数: {result['metadata']['total_images']}")
+            logger.info(f"  Markdown长度: {len(result['markdown'])} 字符")
             return result
             
         elif mode == "accurate":
-            print(f"开始精确模式提取: {pdf_path}")
+            logger.info(f"开始精确模式提取: {pdf_path}")
             api_key = kwargs.get('api_key', '')
             model_name = kwargs.get('model_name', '')
             model_url = kwargs.get('model_url', '')
@@ -1597,18 +1607,18 @@ async def debug_extract(pdf_path: str, mode: str = "fast", **kwargs):
                 model_name=model_name,
                 model_url=model_url
             )
-            print("提取完成，结果:")
-            print(f"  页数: {result['metadata']['total_pages']}")
-            print(f"  表格数: {result['metadata']['total_tables']}")
-            print(f"  公式数: {result['metadata']['total_formulas']}")
-            print(f"  Markdown长度: {len(result['markdown'])} 字符")
+            logger.info("提取完成，结果:")
+            logger.info(f"  页数: {result['metadata']['total_pages']}")
+            logger.info(f"  表格数: {result['metadata']['total_tables']}")
+            logger.info(f"  公式数: {result['metadata']['total_formulas']}")
+            logger.info(f"  Markdown长度: {len(result['markdown'])} 字符")
             return result
             
         else:
             raise ValueError(f"不支持的模式: {momde}")
             
     except Exception as e:
-        print(f"提取过程中发生错误: {e}")
+        logger.error(f"提取过程中发生错误: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1635,7 +1645,7 @@ if __name__ == "__main__":
             model_url=os.getenv("MODEL_URL"))
     else:
         # 启动Web服务
-        print("启动PDF提取服务...")
+        logger.info("启动PDF提取服务...")
         uvicorn.run(
             app,
             host=SERVICE_HOST,

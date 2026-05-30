@@ -1,4 +1,5 @@
 import uuid
+import logging
 import json
 import os
 import requests
@@ -20,6 +21,8 @@ from dotenv import load_dotenv
 # 加载 backend/.env 文件
 env_path = Path(__file__).parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path, override=True)
+
+logger = logging.getLogger(__name__)
 
 # 环境变量配置
 MILVUS_HOST = os.getenv("MILVUS_HOST")
@@ -66,6 +69,13 @@ class DeleteKBRequest(BaseModel):
     collection_name: str
 
 
+# 初始化结构化日志
+try:
+    from common.logging_config import setup_logging
+    setup_logging("rag-milvus")
+except Exception:
+    pass
+
 def call_with_retry(func, max_retries=3, base_delay=1):
     """
     带指数退避重试的函数包装器
@@ -78,7 +88,7 @@ def call_with_retry(func, max_retries=3, base_delay=1):
             if attempt == max_retries - 1:
                 raise  # 最后一次，重新抛出
             delay = base_delay * (2 ** attempt)
-            print(f"API 调用失败 (第 {attempt + 1}/{max_retries} 次重试): {e}，{delay}s 后重试")
+            logger.info("API 调用失败 (第 %d/%d 次重试): %s，%ds 后重试", attempt + 1, max_retries, e, delay)
             time.sleep(delay)
 
 
@@ -90,8 +100,8 @@ class MilvusRAGService:
         self.embedding_model_name = EMBEDDING_MODEL_NAME
         self.embedding_api_key = EMBEDDING_API_KEY
         
-        print(f"Milvus配置: {self.milvus_host}:{self.milvus_port}")
-        print(f"Embedding配置: URL={self.embedding_url}, Model={self.embedding_model_name}")
+        logger.info("Milvus配置: %s:%s", self.milvus_host, self.milvus_port)
+        logger.info("Embedding配置: URL=%s, Model=%s", self.embedding_url, self.embedding_model_name)
         
         self.connect_to_milvus()
     
@@ -103,9 +113,9 @@ class MilvusRAGService:
                 host=self.milvus_host, 
                 port=self.milvus_port
             )
-            print(f"Successfully connected to Milvus at {self.milvus_host}:{self.milvus_port}")
+            logger.info("Successfully connected to Milvus at %s:%s", self.milvus_host, self.milvus_port)
         except Exception as e:
-            print(f"Failed to connect to Milvus: {e}")
+            logger.error("Failed to connect to Milvus: %s", e)
             raise
     
     def generate_embedding(self, text: str) -> List[float]:
@@ -133,7 +143,7 @@ class MilvusRAGService:
         try:
             return call_with_retry(_call_api, max_retries=3, base_delay=1)
         except Exception as e:
-            print(f"Embedding generation failed after retries: {e}")
+            logger.error("Embedding generation failed after retries: %s", e)
             raise HTTPException(
                 status_code=503,
                 detail=f"向量生成服务不可用: {e}"
@@ -154,7 +164,7 @@ class MilvusRAGService:
             return []
         
         total_texts = len(texts)
-        print(f"开始批量生成 {total_texts} 个文本的embeddings，批次大小: {batch_size}")
+        logger.info("开始批量生成 %d 个文本的embeddings，批次大小: %d", total_texts, batch_size)
         
         # 预分配结果列表
         all_embeddings = [None] * total_texts
@@ -188,14 +198,14 @@ class MilvusRAGService:
                     return batch_idx, start_idx, batch_embeddings, None
                 else:
                     error_msg = f"API返回错误: {response.status_code}"
-                    print(f"批次 {batch_idx + 1} {error_msg}")
+                    logger.warning("批次 %d %s", batch_idx + 1, error_msg)
                     fallback_dim = self.get_model_dimension(self.embedding_model_name)
                     batch_embeddings = [np.random.rand(fallback_dim).tolist() for _ in batch_texts]
                     return batch_idx, start_idx, batch_embeddings, error_msg
                     
             except Exception as e:
                 error_msg = f"处理异常: {str(e)}"
-                print(f"批次 {batch_idx + 1} {error_msg}")
+                logger.warning("批次 %d %s", batch_idx + 1, error_msg)
                 fallback_dim = self.get_model_dimension(self.embedding_model_name)
                 batch_embeddings = [np.random.rand(fallback_dim).tolist() for _ in batch_texts]
                 return batch_idx, start_idx, batch_embeddings, error_msg
@@ -222,7 +232,7 @@ class MilvusRAGService:
         
         elapsed = time.time() - start_time
         rate = total_texts / elapsed if elapsed > 0 else 0
-        print(f"批量生成完成，总耗时: {elapsed:.2f}秒，平均速率: {rate:.2f} 文本/秒")
+        logger.info("批量生成完成，总耗时: %.2f秒，平均速率: %.2f 文本/秒", elapsed, rate)
         
         return all_embeddings
     
@@ -285,7 +295,7 @@ class MilvusRAGService:
         with open(mapping_file, 'w', encoding='utf-8') as f:
             json.dump(mappings, f, ensure_ascii=False, indent=2)
 
-        print(f"Saved mapping: {collection_id} -> {display_name}")
+        logger.info("Saved mapping: %s -> %s", collection_id, display_name)
 
     def get_name_mapping(self, collection_id: str = None) -> Dict[str, Any]:
         """获取名称映射"""
@@ -323,7 +333,7 @@ class MilvusRAGService:
             with open(mapping_file, 'w', encoding='utf-8') as f:
                 json.dump(mappings, f, ensure_ascii=False, indent=2)
 
-            print(f"Deleted mapping: {collection_id}")
+            logger.info("Deleted mapping: %s", collection_id)
 
     def create_knowledge_base(self, display_name: str, embedding_dim: int = None) -> tuple:
         """
@@ -364,11 +374,11 @@ class MilvusRAGService:
             # 保存名称映射
             self.save_name_mapping(collection_id, display_name)
 
-            print(f"Created knowledge base: {collection_id} ('{display_name}') with embedding_dim: {embedding_dim}")
+            logger.info("Created knowledge base: %s ('%s') with embedding_dim: %s", collection_id, display_name, embedding_dim)
             return collection_id, True
 
         except Exception as e:
-            print(f"Failed to create knowledge base: {e}")
+            logger.error("Failed to create knowledge base: %s", e)
             raise
     
     def delete_knowledge_base(self, collection_id: str) -> bool:
@@ -378,11 +388,11 @@ class MilvusRAGService:
                 utility.drop_collection(collection_id)
                 # 同时删除名称映射
                 self.delete_name_mapping(collection_id)
-                print(f"Deleted knowledge base: {collection_id}")
+                logger.info("Deleted knowledge base: %s", collection_id)
                 return True
             return False
         except Exception as e:
-            print(f"Failed to delete knowledge base: {e}")
+            logger.error("Failed to delete knowledge base: %s", e)
             raise
     
     def create_or_get_collection(self, collection_name: str, embedding_dim: int = None) -> Collection:
@@ -393,7 +403,7 @@ class MilvusRAGService:
             try:
                 collection.load()
             except Exception as e:
-                print(f"加载已存在的collection时出错: {e}")
+                logger.error("加载已存在的collection时出错: %s", e)
         else:
             if embedding_dim is None:
                 embedding_dim = self.get_model_dimension(self.embedding_model_name)
@@ -430,7 +440,7 @@ class MilvusRAGService:
             for i, chunk in enumerate(chunks):
                 chunk_text = chunk.get("text", "")
                 if not chunk_text.strip():
-                    print(f"跳过空chunk {i}")
+                    logger.warning("跳过空chunk %d", i)
                     continue
                 
                 # 构建metadata
@@ -460,7 +470,7 @@ class MilvusRAGService:
             return documents
             
         except Exception as e:
-            print(f"Failed to parse JSON file: {e}")
+            logger.error("Failed to parse JSON file: %s", e)
             raise HTTPException(status_code=400, detail=f"JSON解析失败: {str(e)}")
     
     def insert_documents(self, collection_name: str, documents: List[DocumentChunk]) -> List[str]:
@@ -473,7 +483,7 @@ class MilvusRAGService:
         
         try:
             # 准备数据
-            print(f"准备 {len(documents)} 个文档数据")
+            logger.info("准备 %d 个文档数据", len(documents))
             
             chunk_texts = []
             filenames = []
@@ -487,19 +497,19 @@ class MilvusRAGService:
                 metadatas.append(json.dumps(doc.metadata, ensure_ascii=False))
             
             # 批量生成embeddings
-            print(f"批量生成embeddings")
+            logger.info("批量生成embeddings")
             EMBED_BATCH_SIZE = 32
             embeddings = self.generate_embeddings_batch(chunk_texts, batch_size=EMBED_BATCH_SIZE)
             
             # 检测embedding维度
             embedding_dim = len(embeddings[0])
-            print(f"检测到embedding维度: {embedding_dim}")
+            logger.info("检测到embedding维度: %d", embedding_dim)
             
             # 创建或获取collection（会自动load）
             collection = self.create_or_get_collection(collection_name, embedding_dim)
             
             # 分批插入Milvus
-            print(f"分批插入Milvus")
+            logger.info("分批插入Milvus")
             MILVUS_BATCH_SIZE = 1000
             total_docs = len(documents)
             
@@ -521,20 +531,20 @@ class MilvusRAGService:
                 # 插入 - 参考milvus_kb_service.py，不调用flush
                 collection.insert(entities)
             
-            print(f"插入完成，共 {len(file_ids)} 条文档")
+            logger.info("插入完成，共 %d 条文档", len(file_ids))
             
             # 插入完成后，确保collection保持加载状态（虽然理论上已经加载）
             try:
                 if not collection.has_index():
                     collection.load()
-                    print("插入后重新加载collection")
+                    logger.info("插入后重新加载collection")
             except Exception as load_err:
-                print(f"插入后加载collection警告: {load_err}")
+                logger.warning("插入后加载collection警告: %s", load_err)
             
             return file_ids
             
         except Exception as e:
-            print(f"插入文档失败: {e}")
+            logger.error("插入文档失败: %s", e)
             raise HTTPException(status_code=500, detail=f"插入文档失败: {str(e)}")
     
     def search_by_text(self, collection_name: str, query_text: str, 
@@ -545,7 +555,7 @@ class MilvusRAGService:
                 raise HTTPException(status_code=404, detail=f"知识库 {collection_name} 不存在")
             
             # 生成查询向量
-            print(f"为查询文本生成embedding: {query_text[:50]}...")
+            logger.info("为查询文本生成embedding: %s...", query_text[:50])
             query_embedding = self.generate_embedding(query_text)
             
             collection = Collection(collection_name)
@@ -554,14 +564,14 @@ class MilvusRAGService:
             try:
                 # 检查collection是否有索引（间接判断是否需要load）
                 if not collection.has_index():
-                    print(f"Collection '{collection_name}' 没有索引，正在加载...")
+                    logger.info("Collection '%s' 没有索引，正在加载...", collection_name)
                     collection.load()
                 else:
                     # 即使有索引，也尝试load以确保在内存中
                     collection.load()
-                print(f"Collection '{collection_name}' 已确保加载")
+                logger.info("Collection '%s' 已确保加载", collection_name)
             except Exception as load_err:
-                print(f"加载collection时出错: {load_err}")
+                logger.error("加载collection时出错: %s", load_err)
                 # 尝试继续，可能已经加载
             
             search_params = {
@@ -571,7 +581,7 @@ class MilvusRAGService:
             
             output_fields = ["chunk_text", "filename", "file_id", "metadata", "created_at"]
             
-            print(f"执行向量搜索，top_k: {top_k}")
+            logger.info("执行向量搜索，top_k: %d", top_k)
             results = collection.search(
                 data=[query_embedding],
                 anns_field="embedding",
@@ -596,13 +606,13 @@ class MilvusRAGService:
                     }
                     formatted_results.append(result)
             
-            print(f"搜索完成，找到 {len(formatted_results)} 个结果")
+            logger.info("搜索完成，找到 %d 个结果", len(formatted_results))
             return formatted_results
             
         except Exception as e:
-            print(f"搜索失败: {e}")
+            logger.error("搜索失败: %s", e)
             import traceback
-            print(f"详细错误: {traceback.format_exc()}")
+            logger.error("详细错误: %s", traceback.format_exc())
             raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
     
     def search_by_filename(self, collection_name: str, filename: str, top_k: int = 10) -> List[Dict]:
@@ -616,13 +626,13 @@ class MilvusRAGService:
             # 确保collection已加载
             try:
                 collection.load()
-                print(f"Collection '{collection_name}' 已加载")
+                logger.info("Collection '%s' 已加载", collection_name)
             except Exception as load_err:
-                print(f"加载collection警告: {load_err}")
+                logger.warning("加载collection警告: %s", load_err)
             
             # 构建查询表达式
             expr = f'filename == "{filename}"'
-            print(f"根据文件名查询: {expr}")
+            logger.info("根据文件名查询: %s", expr)
             
             # 执行查询
             results = collection.query(
@@ -644,13 +654,13 @@ class MilvusRAGService:
                 }
                 formatted_results.append(formatted_result)
             
-            print(f"根据文件名 {filename} 找到 {len(formatted_results)} 个结果")
+            logger.info("根据文件名 %s 找到 %d 个结果", filename, len(formatted_results))
             return formatted_results
             
         except Exception as e:
-            print(f"根据文件名检索失败: {e}")
+            logger.error("根据文件名检索失败: %s", e)
             import traceback
-            print(f"详细错误: {traceback.format_exc()}")
+            logger.error("详细错误: %s", traceback.format_exc())
             raise HTTPException(status_code=500, detail=f"根据文件名检索失败: {str(e)}")
     
     def delete_documents_by_filename(self, collection_name: str, filename: str) -> int:
@@ -665,20 +675,20 @@ class MilvusRAGService:
             try:
                 collection.load()
             except Exception as load_err:
-                print(f"加载collection警告: {load_err}")
+                logger.warning("加载collection警告: %s", load_err)
             
             # 构建删除表达式
             expr = f'filename == "{filename}"'
-            print(f"删除文件: {expr}")
+            logger.info("删除文件: %s", expr)
             
             # 执行删除 - 参考milvus_kb_service.py，不调用flush
             collection.delete(expr)
             
-            print(f"删除文件 {filename} 成功")
+            logger.info("删除文件 %s 成功", filename)
             return 1
             
         except Exception as e:
-            print(f"删除失败: {e}")
+            logger.error("删除失败: %s", e)
             raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
     
     def list_knowledge_bases(self) -> List[Dict[str, Any]]:
@@ -712,7 +722,7 @@ class MilvusRAGService:
             try:
                 collection.load()
             except Exception as load_err:
-                print(f"加载collection警告: {load_err}")
+                logger.warning("加载collection警告: %s", load_err)
 
             # 获取实体总数（chunk数）
             total_chunks = collection.num_entities
@@ -744,7 +754,7 @@ class MilvusRAGService:
                 total_documents = len(unique_filenames)
 
             except Exception as query_err:
-                print(f"查询统计信息失败: {query_err}")
+                logger.warning("查询统计信息失败: %s", query_err)
                 total_documents = 0
                 latest_update = None
 
@@ -761,7 +771,7 @@ class MilvusRAGService:
             }
 
         except Exception as e:
-            print(f"获取统计信息失败: {e}")
+            logger.error("获取统计信息失败: %s", e)
             raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
     def get_collection_documents(self, collection_id: str) -> List[Dict[str, Any]]:
@@ -776,7 +786,7 @@ class MilvusRAGService:
             try:
                 collection.load()
             except Exception as load_err:
-                print(f"加载collection警告: {load_err}")
+                logger.warning("加载collection警告: %s", load_err)
 
             # 查询所有记录
             try:
@@ -786,8 +796,8 @@ class MilvusRAGService:
                 )
                 results = results[:16384]
 
-                print(f"\n📊 查询知识库文档列表: {collection_id}")
-                print(f"  - 总记录数: {len(results)}")
+                logger.info("查询知识库文档列表: %s", collection_id)
+                logger.info("总记录数: %d", len(results))
 
                 # 按文件名分组统计
                 doc_stats = {}
@@ -812,11 +822,11 @@ class MilvusRAGService:
                         
                         # 打印前3个文档的 ID 信息
                         if idx < 3:
-                            print(f"\n  文档 {idx+1}: {filename}")
-                            print(f"    - Milvus file_id: {result.get('file_id')}")
-                            print(f"    - Metadata file_id: {metadata.get('file_id')}")
-                            print(f"    - 实际使用 file_id: {actual_file_id}")
-                            print(f"    - API version: {metadata.get('api_version', 'v1')}")
+                            logger.info("文档 %d: %s", idx+1, filename)
+                            logger.info("Milvus file_id: %s", result.get("file_id"))
+                            logger.info("Metadata file_id: %s", metadata.get("file_id"))
+                            logger.info("实际使用 file_id: %s", actual_file_id)
+                            logger.info("API version: %s", metadata.get("api_version", "v1"))
 
                         doc_stats[filename] = {
                             "filename": filename,
@@ -833,16 +843,16 @@ class MilvusRAGService:
                 documents = list(doc_stats.values())
                 documents.sort(key=lambda x: x.get("created_at", ""), reverse=True)
 
-                print(f"\n  ✓ 去重后文档数: {len(documents)}\n")
+                logger.info("去重后文档数: %d", len(documents))
 
                 return documents
 
             except Exception as query_err:
-                print(f"查询文档列表失败: {query_err}")
+                logger.error("查询文档列表失败: %s", query_err)
                 return []
 
         except Exception as e:
-            print(f"获取文档列表失败: {e}")
+            logger.error("获取文档列表失败: %s", e)
             raise HTTPException(status_code=500, detail=f"获取文档列表失败: {str(e)}")
 
     def get_all_stats(self) -> Dict[str, Any]:
@@ -863,7 +873,7 @@ class MilvusRAGService:
                     total_chunks += stats["total_chunks"]
                     collection_details.append(stats)
                 except Exception as e:
-                    print(f"获取 {collection_name} 统计信息失败: {e}")
+                    logger.warning("获取 %s 统计信息失败: %s", collection_name, e)
                     continue
 
             return {
@@ -874,7 +884,7 @@ class MilvusRAGService:
             }
 
         except Exception as e:
-            print(f"获取汇总统计失败: {e}")
+            logger.error("获取汇总统计失败: %s", e)
             raise HTTPException(status_code=500, detail=f"获取汇总统计失败: {str(e)}")
 
 # FastAPI 应用
@@ -1009,64 +1019,64 @@ async def upload_json_file_v2(request: Dict[str, Any]):
         if not file_id_original:
             raise HTTPException(status_code=400, detail="缺少 file_id 参数")
         
-        print(f"📋 请求参数:")
-        print(f"  - Collection: {collection_name}")
-        print(f"  - File ID: {file_id_original}")
-        print(f"  - Result Key: {result_key or '(自动)'}")
+        logger.info("请求参数:")
+        logger.info("Collection: %s", collection_name)
+        logger.info("File ID: %s", file_id_original)
+        logger.info("Result Key: %s", result_key or "(自动)")
         
         # 提取 results
         results = output_json.get("results", {})
         if not results:
-            print(f"❌ output_json 结构:")
-            print(f"  - Keys: {list(output_json.keys())}")
+            logger.error("output_json 结构:")
+            logger.info("Keys: %s", list(output_json.keys()))
             raise HTTPException(status_code=400, detail="output_json 中未找到 results 字段")
         
         # 获取 result_key
         if not result_key or result_key not in results:
             result_key = list(results.keys())[0]
-            print(f"ℹ️  使用第一个键作为 result_key: {result_key}")
+            logger.info("使用第一个键作为 result_key: %s", result_key)
         
         result_data = results[result_key]
         
-        print(f"\n📦 输入数据信息:")
-        print(f"  - Backend: {output_json.get('backend', 'N/A')}")
-        print(f"  - Version: {output_json.get('version', 'N/A')}")
-        print(f"  - Result Key: {result_key}")
-        print(f"  - 包含字段: {list(result_data.keys())}")
-        print(f"  - 是否有 md_content: {'md_content' in result_data}")
-        print(f"  - 是否有 chunks: {'chunks' in result_data}")
-        print(f"  - 是否有 images: {'images' in result_data}")
-        print(f"  - 是否有 page_images: {'page_images' in result_data}")
+        logger.info("输入数据信息:")
+        logger.info("Backend: %s", output_json.get("backend", "N/A"))
+        logger.info("Version: %s", output_json.get("version", "N/A"))
+        logger.info("Result Key: %s", result_key)
+        logger.info("包含字段: %s", list(result_data.keys()))
+        logger.info("是否有 md_content: %s", "md_content" in result_data)
+        logger.info("是否有 chunks: %s", "chunks" in result_data)
+        logger.info("是否有 images: %s", "images" in result_data)
+        logger.info("是否有 page_images: %s", "page_images" in result_data)
         
         if 'md_content' in result_data:
-            print(f"  - md_content 长度: {len(result_data['md_content'])} 字符")
+            logger.info("md_content 长度: %d 字符", len(result_data["md_content"]))
         
         # 提取 chunks
         chunks = result_data.get("chunks", [])
         if not chunks:
-            print(f"❌ 未找到 chunks 或 chunks 为空")
+            logger.error("未找到 chunks 或 chunks 为空")
             raise HTTPException(status_code=400, detail="未找到 chunks 字段或 chunks 为空")
         
-        print(f"  - 总 chunks: {len(chunks)}")
+        logger.info("总 chunks: %d", len(chunks))
         
         # 打印前3个 chunks 的结构
-        print(f"\n📝 前 3 个 chunks 结构:")
+        logger.info("前 3 个 chunks 结构:")
         for i, chunk in enumerate(chunks[:3]):
-            print(f"  Chunk {i+1}:")
-            print(f"    - Keys: {list(chunk.keys())}")
-            print(f"    - 页码: {chunk.get('page_start')}-{chunk.get('page_end')}")
-            print(f"    - 文本长度: {chunk.get('text_length')}")
-            print(f"    - 文本预览: {chunk.get('text', '')[:50]}...")
+            logger.info("Chunk %d:", i+1)
+            logger.info("Keys: %s", list(chunk.keys()))
+            logger.info("页码: %s-%s", chunk.get("page_start"), chunk.get("page_end"))
+            logger.info("文本长度: %s", chunk.get("text_length"))
+            logger.info("文本预览: %s...", chunk.get("text", "")[:50])
         
         # 构建 DocumentChunk 列表
-        print(f"\n🔄 开始构建 DocumentChunk 列表...")
+        logger.info("开始构建 DocumentChunk 列表...")
         documents = []
         filename = result_key + ".pdf"  # 恢复文件名
         
         for i, chunk in enumerate(chunks):
             chunk_text = chunk.get("text", "")
             if not chunk_text.strip():
-                print(f"  ⚠️  跳过空 chunk {i}")
+                logger.warning("跳过空 chunk %d", i)
                 continue
             
             # 构建 metadata（包含 V2 的额外字段 + 原始 file_id）
@@ -1094,22 +1104,22 @@ async def upload_json_file_v2(request: Dict[str, Any]):
             )
             documents.append(doc)
         
-        print(f"  ✓ 构建完成，有效 chunks: {len(documents)}")
+        logger.info("构建完成，有效 chunks: %d", len(documents))
         
         # 插入到 Milvus
-        print(f"\n🗄️  开始插入到 Milvus（Collection: {collection_name}）...")
+        logger.info("开始插入到 Milvus（Collection: %s）...", collection_name)
         file_ids = milvus_service.insert_documents(collection_name, documents)
         
-        print("\n" + "="*80)
-        print("✅ OCR 2.0 数据存储完成")
-        print("="*80)
-        print(f"📊 存储统计:")
-        print(f"  - Collection: {collection_name}")
-        print(f"  - 文件名: {filename}")
-        print(f"  - 插入数量: {len(file_ids)}")
-        print(f"  - Backend: {output_json.get('backend')}")
-        print(f"  - Version: {output_json.get('version')}")
-        print("="*80 + "\n")
+        logger.info("=" * 80)
+        logger.info("OCR 2.0 数据存储完成")
+        logger.info("=" * 80)
+        logger.info("存储统计:")
+        logger.info("Collection: %s", collection_name)
+        logger.info("文件名: %s", filename)
+        logger.info("插入数量: %d", len(file_ids))
+        logger.info("Backend: %s", output_json.get("backend"))
+        logger.info("Version: %s", output_json.get("version"))
+        logger.info("=" * 80)
         
         return {
             "status": "success",
@@ -1124,13 +1134,13 @@ async def upload_json_file_v2(request: Dict[str, Any]):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"\n" + "="*80)
-        print(f"❌ OCR 2.0 数据存储失败")
-        print("="*80)
-        print(f"错误: {e}")
+        logger.error("=" * 80)
+        logger.error("OCR 2.0 数据存储失败")
+        logger.error("=" * 80)
+        logger.error("错误: %s", e)
         import traceback
-        traceback.print_exc()
-        print("="*80 + "\n")
+        logger.error("存储失败", exc_info=True)
+        logger.info("=" * 80)
         raise HTTPException(status_code=500, detail=f"OCR 2.0 数据存储失败: {str(e)}")
 
 @app.post("/search")
@@ -1238,10 +1248,10 @@ async def get_knowledge_base_documents(collection_id: str):
 async def get_document_details(file_id: str):
     """获取文档的详细信息，包括PDF、Markdown、chunks等（支持 V1 和 V2）"""
     try:
-        print("\n" + "="*80)
-        print(f"📄 获取文档详情请求 - /document/{file_id}/details")
-        print("="*80)
-        print(f"  - File ID: {file_id}")
+        logger.info("=" * 80)
+        logger.info("获取文档详情请求 - /document/%s/details", file_id)
+        logger.info("=" * 80)
+        logger.info("File ID: %s", file_id)
         
         # 定义基础路径（V1 和 V2 现在都使用同一个路径，从环境变量读取）
         import os
@@ -1264,16 +1274,16 @@ async def get_document_details(file_id: str):
         }
         
         # 查找文件目录
-        print(f"\n🔍 查找文件...")
+        logger.info("查找文件...")
         
         extraction_dir = extraction_base / file_id
         base_upload_dir = upload_base
         
         if not extraction_dir.exists():
-            print(f"  ❌ 目录不存在: {extraction_dir}")
+            logger.warning("目录不存在: %s", extraction_dir)
             raise HTTPException(status_code=404, detail=f"文档 {file_id} 不存在")
         
-        print(f"  ✓ 找到目录: {extraction_dir}")
+        logger.info("找到目录: %s", extraction_dir)
         
         # 通过文件特征判断版本（V1 vs V2）
         # V2特征：有 *_extraction.md 或 *_chunked_output.json 文件
@@ -1284,16 +1294,16 @@ async def get_document_details(file_id: str):
         
         if has_v2_extraction or has_v2_chunked:
             api_version = "v2"
-            print(f"  ✓ 识别为 V2 格式 (有 *_extraction.md 或 *_chunked_output.json)")
+            logger.info("识别为 V2 格式 (有 *_extraction.md 或 *_chunked_output.json)")
         elif has_v1_chunks:
             api_version = "v1"
-            print(f"  ✓ 识别为 V1 格式 (有 chunks.json)")
+            logger.info("识别为 V1 格式 (有 chunks.json)")
         else:
             # 默认为V1（兼容老数据）
             api_version = "v1"
-            print(f"  ⚠️  无法明确识别版本，默认使用 V1")
+            logger.warning("无法明确识别版本，默认使用 V1")
         
-        print(f"  - 使用版本: {api_version}")
+        logger.info("使用版本: %s", api_version)
         
         # 读取metadata.json（V1 和 V2 通用）或者 V2 的 metadata 文件
         metadata_files = list(extraction_dir.glob("*_metadata.json")) + [extraction_dir / "metadata.json"]
@@ -1304,16 +1314,16 @@ async def get_document_details(file_id: str):
                 break
         
         if not metadata_path:
-            print(f"  ❌ 未找到 metadata 文件")
+            logger.warning("未找到 metadata 文件")
             raise HTTPException(status_code=404, detail="元数据文件不存在")
 
-        print(f"  ✓ 找到 metadata: {metadata_path.name}")
+        logger.info("找到 metadata: %s", metadata_path.name)
         
         with open(metadata_path, 'r', encoding='utf-8') as f:
             metadata = json.load(f)
 
         # 读取chunks（V1 和 V2 格式不同）
-        print(f"\n📦 读取 chunks...")
+        logger.info("读取 chunks...")
         chunks_data = []
         
         if api_version == "v2":
@@ -1321,7 +1331,7 @@ async def get_document_details(file_id: str):
             chunked_files = list(extraction_dir.glob("*_chunked_output.json"))
             if chunked_files:
                 chunked_file = chunked_files[0]
-                print(f"  - V2 格式: {chunked_file.name}")
+                logger.info("V2 格式: %s", chunked_file.name)
                 with open(chunked_file, 'r') as f:
                     chunked_json = json.load(f)
                     # 从 results 中提取 chunks
@@ -1329,24 +1339,24 @@ async def get_document_details(file_id: str):
                     if results:
                         result_key = list(results.keys())[0]
                         chunks_data = results[result_key].get('chunks', [])
-                print(f"  ✓ 读取到 {len(chunks_data)} 个 chunks (V2)")
+                logger.info("读取到 %d 个 chunks (V2)", len(chunks_data))
             else:
-                print(f"  ⚠️  未找到 V2 chunked_output.json")
+                logger.warning("未找到 V2 chunked_output.json")
         else:
             # V1: 从 chunks.json 中读取
             chunks_path = extraction_dir / "chunks.json"
             if chunks_path.exists():
-                print(f"  - V1 格式: chunks.json")
+                logger.info("V1 格式: chunks.json")
                 with open(chunks_path, 'r') as f:
                     full_chunks = json.load(f)
                     if isinstance(full_chunks, dict) and 'chunks' in full_chunks:
                         chunks_data = full_chunks.get('chunks', [])
                     else:
                         chunks_data = full_chunks
-                print(f"  ✓ 读取到 {len(chunks_data)} 个 chunks (V1)")
+                logger.info("读取到 %d 个 chunks (V1)", len(chunks_data))
 
         # 读取markdown（V1 和 V2 格式不同）
-        print(f"\n📝 读取 markdown...")
+        logger.info("读取 markdown...")
         markdown_content = ""
         
         if api_version == "v2":
@@ -1354,21 +1364,21 @@ async def get_document_details(file_id: str):
             md_files = list(extraction_dir.glob("*_extraction.md"))
             if md_files:
                 md_file = md_files[0]
-                print(f"  - V2 格式: {md_file.name}")
+                logger.info("V2 格式: %s", md_file.name)
                 with open(md_file, 'r', encoding='utf-8') as f:
                     markdown_content = f.read()
-                print(f"  ✓ Markdown 长度: {len(markdown_content)} 字符 (V2)")
+                logger.info("Markdown 长度: %d 字符 (V2)", len(markdown_content))
         else:
             # V1: 从文件名.md 读取
             markdown_path = extraction_dir / f"{metadata['filename'].replace('.pdf', '.md')}"
             if markdown_path.exists():
-                print(f"  - V1 格式: {markdown_path.name}")
+                logger.info("V1 格式: %s", markdown_path.name)
                 with open(markdown_path, 'r', encoding='utf-8') as f:
                     markdown_content = f.read()
-                print(f"  ✓ Markdown 长度: {len(markdown_content)} 字符 (V1)")
+                logger.info("Markdown 长度: %d 字符 (V1)", len(markdown_content))
 
         # 查找PDF文件（V1 和 V2 路径不同）
-        print(f"\n📎 查找 PDF 文件...")
+        logger.info("查找 PDF 文件...")
         pdf_filename_pattern = f"*{file_id}*{metadata['filename']}"
         pdf_path = None
         
@@ -1376,20 +1386,20 @@ async def get_document_details(file_id: str):
         for pdf_file in base_upload_dir.rglob("*.pdf"):
             if file_id in pdf_file.name and metadata['filename'] in pdf_file.name:
                 pdf_path = pdf_file
-                print(f"  ✓ 找到 PDF: {pdf_path}")
+                logger.info("找到 PDF: %s", pdf_path)
                 break
         
         if not pdf_path:
-            print(f"  ⚠️  未找到 PDF 文件")
+            logger.warning("未找到 PDF 文件")
 
-        print(f"\n" + "="*80)
-        print(f"✅ 文档详情提取完成 ({api_version.upper()})")
-        print("="*80)
-        print(f"  - Filename: {metadata.get('filename')}")
-        print(f"  - Chunks: {len(chunks_data)}")
-        print(f"  - Markdown: {len(markdown_content)} 字符")
-        print(f"  - PDF: {'有' if pdf_path else '无'}")
-        print("="*80 + "\n")
+        logger.info("=" * 80)
+        logger.info("文档详情提取完成 (%s)", api_version.upper())
+        logger.info("=" * 80)
+        logger.info("Filename: %s", metadata.get('filename'))
+        logger.info("Chunks: %d", len(chunks_data))
+        logger.info("Markdown: %d 字符", len(markdown_content))
+        logger.info("PDF: %s", "有" if pdf_path else "无")
+        logger.info("=" * 80)
 
         return {
             "status": "success",
@@ -1409,14 +1419,14 @@ async def get_document_details(file_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"获取文档详情失败: {e}")
+        logger.error("获取文档详情失败: %s", e)
         raise HTTPException(status_code=500, detail=f"获取文档详情失败: {str(e)}")
 
 @app.get("/document/{file_id}/pdf")
 async def get_document_pdf(file_id: str):
     """直接返回PDF文件，Content-Disposition设置为inline以便浏览器内嵌显示（支持 V1 和 V2）"""
     try:
-        print(f"\n📎 获取 PDF 文件请求: {file_id}")
+        logger.info("获取 PDF 文件请求: %s", file_id)
         
         # 定义基础路径（V1 和 V2 现在都使用同一个路径，从环境变量读取）
         import os
@@ -1457,7 +1467,7 @@ async def get_document_pdf(file_id: str):
         else:
             api_version = "v1"  # 默认V1
         
-        print(f"  - 使用版本: {api_version}")
+        logger.info("使用版本: %s", api_version)
         
         # 读取metadata
         metadata_files = list(extraction_dir.glob("*_metadata.json")) + [extraction_dir / "metadata.json"]
@@ -1484,10 +1494,10 @@ async def get_document_pdf(file_id: str):
                 break
 
         if not pdf_path or not pdf_path.exists():
-            print(f"  ❌ PDF 文件未找到")
+            logger.warning("PDF 文件未找到")
             raise HTTPException(status_code=404, detail="PDF文件不存在")
 
-        print(f"  ✓ 找到 PDF: {pdf_path}")
+        logger.info("找到 PDF: %s", pdf_path)
 
         # 返回PDF，设置为inline模式以便浏览器内嵌显示
         from fastapi.responses import Response
@@ -1498,7 +1508,7 @@ async def get_document_pdf(file_id: str):
         # URL encode the filename for proper handling of Chinese characters
         encoded_filename = quote(filename)
 
-        print(f"  ✓ 返回 PDF ({api_version.upper()}): {filename}\n")
+        logger.info("返回 PDF (%s): %s", api_version.upper(), filename)
 
         return Response(
             content=pdf_content,
@@ -1511,7 +1521,7 @@ async def get_document_pdf(file_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"获取PDF文件失败: {e}")
+        logger.error("获取PDF文件失败: %s", e)
         raise HTTPException(status_code=500, detail=f"获取PDF文件失败: {str(e)}")
 
 @app.get("/document/{file_id}/images/{image_name}")
@@ -1547,18 +1557,18 @@ async def get_document_image(file_id: str, image_name: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"获取图片失败: {e}")
+        logger.error("获取图片失败: %s", e)
         raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
 
 if __name__ == "__main__":
     host = os.getenv("SERVER_HOST", "0.0.0.0")
     port = int(os.getenv("SERVER_PORT", "8000"))
     
-    print("\n" + "="*60)
-    print("Starting Milvus RAG Service")
-    print("="*60)
-    print(f"Server: http://{host}:{port}")
-    print(f"Docs: http://{host}:{port}/docs")
-    print("="*60 + "\n")
+    logger.info("=" * 60)
+    logger.info("Starting Milvus RAG Service")
+    logger.info("=" * 60)
+    logger.info("Server: http://%s:%d", host, port)
+    logger.info("Docs: http://%s:%d/docs", host, port)
+    logger.info("=" * 60)
     
     uvicorn.run(app, host=host, port=port)
