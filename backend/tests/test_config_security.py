@@ -23,7 +23,7 @@ class TestConfigSecurity:
     def test_default_config_hides_api_key(self):
         """API key must be empty or redacted even when API_KEY env var is set."""
         # Simulate production environment where API_KEY is configured
-        with patch.dict(os.environ, {"API_KEY": "sk-secret-real-key-12345"}):
+        with patch.dict(os.environ, {"API_KEY": "fake-api-key-for-test"}):
             response = client.get("/config/default")
         assert response.status_code == 200, (
             f"Expected status 200, got {response.status_code}: {response.text}"

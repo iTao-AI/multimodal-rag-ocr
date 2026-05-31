@@ -14,8 +14,7 @@ Multimodal RAG OCR 项目文档集。按阅读顺序排列。
 | 2 | [API 参考](./API_REFERENCE.md) | 前后端开发者 | 10 min |
 | 3 | [开发指南](./DEV_GUIDE.md) | 搭建环境/写代码的人 | 15 min |
 | 4 | [算法详解](./ALGORITHM_DEEP_DIVE.md) | 想深入理解核心逻辑的人 | 30 min |
-| 5 | [项目概览](./PROJECT_OVERVIEW.md) | 需要理解项目的人 | 30 min |
-| 6 | [改进路线图](./ROADMAP.md) | 计划改进项目的人 | 10 min |
+| 5 | [改进路线图](./ROADMAP.md) | 计划改进项目的人 | 10 min |
 
 ## V2.1 新增内容
 
@@ -43,7 +42,6 @@ Multimodal RAG OCR 项目文档集。按阅读顺序排列。
 | 文本切分算法细节 | [算法详解 → 第一节](./ALGORITHM_DEEP_DIVE.md#一header-recursive-文本切分算法) |
 | Reranker 怎么工作 | [算法详解 → 第二节](./ALGORITHM_DEEP_DIVE.md#二reranker-算法) |
 | 向量检索和 Embedding | [算法详解 → 第三节](./ALGORITHM_DEEP_DIVE.md#三向量检索与-embedding) |
-| 项目整体怎么理解 | [项目概览](./PROJECT_OVERVIEW.md) |
 | 下一步改进计划 | [改进路线图](./ROADMAP.md) |
 
 ---

@@ -109,7 +109,6 @@ Transform tasks into verifiable goals:
 | @.specify/memory/constitution.md | 每次 task 启动，确认遵循哪条原则 |
 | @CLAUDE.md | 本文件，每次工作前确认项目上下文 |
 | @specs/00X-*/spec.md | 执行具体 feature 时 |
-| @docs/PROJECT_OVERVIEW.md | 了解项目技术细节时 |
 | @docs/ROADMAP.md | 了解项目改进路线和优先级时 |
 
 ## 远程仓库

@@ -150,7 +150,7 @@ export function Settings() {
                     <div className="flex-1 relative">
                       <input
                         type={showApiKey ? 'text' : 'password'}
-                        defaultValue="sk-1234567890abcdef"
+                        defaultValue="your-api-key"
                         className="w-full px-4 py-3 pr-12 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
                       />
                       <button
