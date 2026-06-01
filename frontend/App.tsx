@@ -23,6 +23,9 @@ export default function App() {
     return saved === 'v2';
   });
 
+  // 移动端侧边栏折叠状态
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const handleToggleVersion = () => {
     const newVersion = !isV2;
     setIsV2(newVersion);
@@ -155,19 +158,28 @@ export default function App() {
         </div>
       )}
 
-      <Sidebar 
-        activeView={activeView} 
-        onNavigate={handleNavigate}
+      <Sidebar
+        activeView={activeView}
+        onNavigate={(view) => { handleNavigate(view); setSidebarOpen(false); }}
         isV2={isV2}
         onToggleVersion={handleToggleVersion}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
 
-      <div style={{ marginLeft: '260px', position: 'relative', zIndex: 10, minHeight: '100vh' }}>
-        <Header title={getHeaderTitle()} />
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        <main style={{
-          paddingTop: (activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '64px' : '80px',
-          minHeight: 'calc(100vh - 64px)'
+      <div className="transition-all duration-300 lg:ml-[260px]">
+        <Header title={getHeaderTitle()} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+
+        <main className="pt-[80px] lg:pt-[80px] min-h-screen" style={{
+          paddingTop: (activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '64px' : undefined,
         }}>
           <div className={(activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '' : 'max-w-[1440px] mx-auto p-6'}>
             <AnimatePresence mode="wait">

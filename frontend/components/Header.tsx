@@ -1,22 +1,33 @@
-import { Bell, User, Activity } from 'lucide-react';
+import { Bell, User, Activity, Menu } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface HeaderProps {
   title: string;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export function Header({ title }: HeaderProps) {
+export function Header({ title, sidebarOpen = true, onToggleSidebar }: HeaderProps) {
   return (
-    <header className="h-16 glass fixed top-0 left-[260px] right-0 z-40 border-b border-[rgba(0,212,255,0.15)]">
+    <header className={`h-16 glass fixed top-0 ${sidebarOpen ? 'left-[260px]' : 'left-0'} right-0 z-40 border-b border-[rgba(0,212,255,0.15)] transition-all duration-300`}>
       <div className="h-full px-6 flex items-center justify-between">
-        <motion.h2 
-          className="text-[#e8eaed]"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {title}
-        </motion.h2>
+        <div className="flex items-center gap-4">
+          {/* Mobile hamburger menu */}
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden text-[#00d4ff] hover:text-[#00ffaa] transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+          <motion.h2
+            className="text-[#e8eaed]"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {title}
+          </motion.h2>
+        </div>
         
         <div className="flex items-center gap-3">
           {/* Activity Indicator */}

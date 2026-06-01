@@ -223,9 +223,8 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                       pre: ({node, ...props}) => (
                         <pre className="bg-[rgba(0,212,255,0.1)] p-4 rounded-xl overflow-x-auto" {...props} />
                       ),
-                      img: ({node, ...props}) => (
-                        <img className="max-w-full h-auto rounded-xl border border-[rgba(0,212,255,0.2)] my-4" {...props} />
-                      ),
+                      // Hide page screenshot images - users see them in PDF tab instead
+                      img: () => null,
                     }}
                   >
                     {processMarkdownImages(docData.markdown, docData.file_id)}
