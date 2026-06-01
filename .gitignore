@@ -6,8 +6,13 @@ minerU/.vite/
 minerU/Dockerfile
 .vite/
 backend/mineru_visualizations/
+backend/data/
 backend/Database/milvus_server/data/volumes/
 backend/output/
+backend/Information-Extraction/01_rule_based/*/output/
+backend/Information-Extraction/02_vlm_based/output_*/
+backend/Information-Extraction/02_vlm_based/gptpdf/output_bak/
+backend/Information-Extraction/02_vlm_based/markpdfdown/output/
 backend/logs/
 backend/pids/
 frontend/backend/
@@ -17,3 +22,4 @@ frontend/node_modules/
 backend/knowledge-management/mysql/data/
 ../worktrees/
 .worktrees/
+.gstack/
