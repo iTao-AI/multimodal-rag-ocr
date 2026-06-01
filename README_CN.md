@@ -52,7 +52,7 @@
 | 缓存 | Redis（查询结果缓存） |
 | 混合检索 | BM25 + 向量 RRF 融合 |
 | 后端 | FastAPI（4 个微服务） |
-| 前端 | Vue 3 + Vite |
+| 前端 | React 18 + Vite |
 | 部署 | Docker（Milvus），AutoDL GPU 服务器（OCR） |
 
 ## 快速开始

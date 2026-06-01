@@ -52,7 +52,7 @@ Backend Services (4 independent FastAPI microservices):
 | Cache | Redis (query result caching) |
 | Hybrid Search | BM25 + Vector RRF fusion |
 | Backend | FastAPI (4 microservices) |
-| Frontend | Vue 3 + Vite |
+| Frontend | React 18 + Vite |
 | Deployment | Docker (Milvus), AutoDL GPU server (OCR) |
 
 ## Project Structure
@@ -74,7 +74,7 @@ multimodal-rag-ocr/
 │   ├── Text_segmentation/    # Text chunking service (:8001)
 │   ├── knowledge-management/ # Knowledge base management UI
 │   └── .env.example          # Backend configuration
-├── frontend/                 # Vue 3 frontend
+├── frontend/                 # React 18 frontend
 ├── ragflow-deploy/           # RAGFlow deployment (optional)
 └── docs/                     # Architecture and deployment docs
 ```
