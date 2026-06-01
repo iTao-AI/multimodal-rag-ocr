@@ -115,49 +115,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${isV2 ? 'theme-v2' : ''}`}>
-      {/* Animated Background Grid - 仅在v1.0显示 */}
-      {!isV2 && (
-        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,212,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,212,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
-          
-          {/* Floating Orbs */}
-          <motion.div
-            className="absolute w-[500px] h-[500px] rounded-full bg-[#00d4ff] opacity-10 blur-[120px]"
-            animate={{
-              x: [0, 100, 0],
-              y: [0, -100, 0],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            style={{ top: '10%', left: '20%' }}
-          />
-          <motion.div
-            className="absolute w-[400px] h-[400px] rounded-full bg-[#0066ff] opacity-10 blur-[120px]"
-            animate={{
-              x: [0, -80, 0],
-              y: [0, 80, 0],
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            style={{ bottom: '10%', right: '20%' }}
-          />
-        </div>
-      )}
-      
-      {/* v2.0 简洁背景 */}
-      {isV2 && (
-        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-blue-50/30" />
-        </div>
-      )}
-
+    <div className={`professional-app min-h-screen bg-[#f4f6f8] text-[#111827] ${isV2 ? 'theme-v2' : ''}`}>
       <Sidebar
         activeView={activeView}
         onNavigate={(view) => { handleNavigate(view); setSidebarOpen(false); }}
@@ -175,20 +133,20 @@ export default function App() {
         />
       )}
 
-      <div className="transition-all duration-300 lg:ml-[260px]">
+      <div className="app-content transition-all duration-300">
         <Header title={getHeaderTitle()} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
-        <main className="pt-[80px] lg:pt-[80px] min-h-screen" style={{
-          paddingTop: (activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '64px' : undefined,
+        <main className="min-h-screen" style={{
+          paddingTop: (activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '64px' : '80px',
         }}>
-          <div className={(activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '' : 'max-w-[1440px] mx-auto p-6'}>
+          <div className={(activeView === 'chat' || (activeView === 'knowledge' && selectedDocument)) ? '' : 'max-w-[1440px] mx-auto px-4 py-5 sm:px-6 lg:px-8'}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView + (selectedKnowledgeBase || '') + (selectedDocument || '')}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
               >
                 {renderContent()}
               </motion.div>
@@ -198,17 +156,14 @@ export default function App() {
       </div>
 
       <Toaster 
-        theme={isV2 ? 'light' : 'dark'}
+        theme="light"
         position="top-right"
         toastOptions={{
-          style: isV2 ? {
+          style: {
             background: 'white',
-            color: '#1e293b',
-            border: '1px solid #e2e8f0',
-          } : {
-            background: 'rgba(10, 14, 39, 0.95)',
-            color: '#e8eaed',
-            border: '1px solid rgba(0, 212, 255, 0.3)',
+            color: '#111827',
+            border: '1px solid #dbe3ea',
+            boxShadow: '0 18px 50px rgba(15, 23, 42, 0.12)',
           },
         }}
       />
