@@ -15,11 +15,16 @@ from datetime import datetime
 
 import uvicorn
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
+
+# 加载 backend/.env 获取后端自有 API Key
+_env_path = os.path.join(os.path.dirname(__file__), os.pardir, '.env')
+load_dotenv(dotenv_path=_env_path, override=False)
 
 # 检索增强组件 (V2.1)
 # 将 backend/ 目录加入 Python path，使 common/ 和 milvus_server/ 可导入
@@ -44,6 +49,22 @@ QUERY_REWRITE_ENABLED = os.getenv("QUERY_REWRITE_ENABLED", "true").lower() == "t
 # 服务配置
 SERVICE_PORT = int(os.getenv("CHAT_SERVICE_PORT", "8501"))
 SERVICE_HOST = os.getenv("CHAT_SERVICE_HOST", "0.0.0.0")
+
+# ============ 后端自有 API Key（前端不持有） ============
+
+_BACKEND_API_KEY = os.getenv("API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
+
+
+def resolve_api_key(frontend_key: str) -> str:
+    """解析实际使用的 API Key。
+
+    前端传回的 api_key 可能是掩码 "***"（来自 /config/default），
+    此时使用后端 .env 中配置的真实 Key。
+    """
+    if not frontend_key or frontend_key.strip() in ("***", "*", ""):
+        if _BACKEND_API_KEY:
+            return _BACKEND_API_KEY
+    return frontend_key
 
 # ============ 数据模型 ============
 
@@ -472,8 +493,9 @@ class ChatService:
         流式调用大模型
         """
         try:
+            effective_key = resolve_api_key(llm_config.api_key)
             client = AsyncOpenAI(
-                api_key=llm_config.api_key,
+                api_key=effective_key,
                 base_url=llm_config.api_url
             )
             
@@ -504,8 +526,9 @@ class ChatService:
         非流式调用大模型
         """
         try:
+            effective_key = resolve_api_key(llm_config.api_key)
             client = AsyncOpenAI(
-                api_key=llm_config.api_key,
+                api_key=effective_key,
                 base_url=llm_config.api_url
             )
             
@@ -1084,6 +1107,7 @@ async def get_default_config():
                 "score_threshold": 0.3
             },
             "available_models": [
+                {"name": "deepseek-v4-flash", "display": "DeepSeek V4 Flash", "provider": "DeepSeek"},
                 {"name": "qwen-plus", "display": "通义千问 Plus", "provider": "阿里云"},
                 {"name": "qwen-max", "display": "通义千问 Max", "provider": "阿里云"},
                 {"name": "qwen-turbo", "display": "通义千问 Turbo", "provider": "阿里云"},

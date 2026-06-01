@@ -12,6 +12,7 @@ import tempfile
 import shutil
 import os
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
