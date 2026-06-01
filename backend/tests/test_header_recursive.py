@@ -15,15 +15,17 @@ class TestHeaderOrder:
         idx_112 = merged.index("### 1.1.2 细节")
         assert idx_111 < idx_112, f"顺序错误：{merged}"
 
-    def test_set_breaks_header_order(self):
-        """验证 set() 会破坏 header 顺序（反向测试）"""
+    def test_dict_fromkeys_removes_duplicates_without_reordering(self):
+        """验证保序去重不会依赖 set() 的非确定性迭代顺序"""
         prev_headers = ["# 第一章", "## 1.1 介绍", "### 1.1.1 背景"]
         curr_headers = ["# 第一章", "## 1.1 介绍", "### 1.1.2 细节"]
-        merged_set = list(set(prev_headers + curr_headers))
-        # set 不保证顺序，顶级标题不一定在最前
-        # 此测试验证 set() 方法不可靠
-        assert merged_set[0] != "# 第一章" or merged_set[1] != "## 1.1 介绍", \
-            f"set() 碰巧顺序正确（小概率）：{merged_set}"
+        merged = list(dict.fromkeys(prev_headers + curr_headers))
+        assert merged == [
+            "# 第一章",
+            "## 1.1 介绍",
+            "### 1.1.1 背景",
+            "### 1.1.2 细节",
+        ]
 
     def test_stitch_preserves_header_order(self):
         """测试 stitch_chunks_with_headers 合并后 headers 保持顺序"""
