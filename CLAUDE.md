@@ -101,6 +101,55 @@ Transform tasks into verifiable goals:
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
 
+## SUPERPOWERS_GATE
+
+实现前必须输出并满足：
+
+```text
+SUPERPOWERS_GATE:
+- using-superpowers: active
+- using-git-worktrees: loaded / not needed
+- test-driven-development: loaded
+- subagent-driven-development: loaded / not needed
+- systematic-debugging: loaded / not needed
+- verification-before-completion: pending final gate
+```
+
+## TDD_EVIDENCE
+
+实现类任务必须记录：
+
+```text
+TDD_EVIDENCE:
+- RED command:
+- RED failure:
+- GREEN command:
+- GREEN result:
+
+FILES_TOUCHED:
+- path: change summary
+
+VERIFICATION:
+- command:
+- result:
+```
+
+## Reviewer Gate
+
+实现完成后进入 reviewer gate。
+
+如果当前 Claude Code 环境支持程序化 custom-agent invocation，通过支持的路径调用 `@agent-gstack-fixfirst-reviewer`。
+
+否则，停下来请用户在 chat 中运行：
+
+```text
+@agent-gstack-fixfirst-reviewer review the current implementation, fix scoped issues, rerun verification, and return PASS / PASS_WITH_FIXES / FAIL.
+```
+
+不要假装 review 发生过。完成条件为以下之一：
+- Reviewer 输出 `PASS`、`PASS_WITH_FIXES` 或 `FAIL`
+- 记录了 missing-agent 或 unsupported-invocation fallback，加上实际使用的 GStack review 路径
+
 ## 关键文件导航
 
 | 文件 | 何时读 |

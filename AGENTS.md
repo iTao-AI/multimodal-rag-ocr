@@ -101,6 +101,32 @@ Transform tasks into verifiable goals:
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
 
+## Skill Trigger Naming
+
+- Codex Superpowers skills use namespaced handles such as `superpowers:brainstorming`, `superpowers:writing-plans`, and `superpowers:verification-before-completion`.
+- Codex GStack skills use `gstack-<skill-name>` handles such as `gstack-office-hours`, `gstack-autoplan`, `gstack-review`, `gstack-qa-only`, and `gstack-investigate`.
+- Claude Code uses different skill names. Do not copy Claude-side skill trigger lines into Codex instructions without translating them.
+
+## Final Acceptance Flow
+
+Before final acceptance, Codex must review:
+
+- Source spec
+- Implementation plan
+- Claude execution evidence
+- `@agent-gstack-fixfirst-reviewer` output, if the agent is available
+- Git diff
+- Actual command output
+
+Recommended Codex-facing sequence:
+
+```text
+gstack-review
+gstack-qa-only or gstack-qa when needed
+superpowers:verification-before-completion
+gstack-investigate only when failure or ambiguity remains
+```
+
 ## 关键文件导航
 
 | 文件 | 何时读 |
