@@ -62,17 +62,17 @@ async with httpx.AsyncClient() as client:
     response = await client.post(...)
 ```
 
-### P0-3: 清理已提交的敏感信息
+### P0-3: 清理敏感配置暴露风险
 
 **文件**: `backend/.env`, `backend/chat/test_kb_chat_api.py`
 
-**问题**: API Key 已提交到 Git 仓库，即使后续加入 `.gitignore` 也无法清除历史记录。
+**问题**: 敏感配置不应出现在版本控制内容或测试代码中，历史记录需要完成审计。
 
 **修复步骤**:
-1. 撤销 API Key（在 DashScope 控制台）
-2. 生成新的 Key
-3. 用 `git filter-branch` 或 BFG 清除历史中的 Key
-4. 从测试文件中移除硬编码 Key
+1. 撤销并轮换受影响凭据
+2. 确认 `.gitignore` 覆盖本地配置
+3. 使用标准 secret-cleanup 流程清理历史中的敏感内容
+4. 从测试文件中移除硬编码凭据
 
 ---
 

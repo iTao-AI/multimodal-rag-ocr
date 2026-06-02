@@ -314,60 +314,60 @@ main {
 }
 
 /* 文字颜色修复 - 收窄选择器，保留 Tailwind 语义色（text-red-500 等） */
-.theme-v2 {
+.theme-v2:not(.professional-app) {
   color: #1a1a1a;
 }
 
-.theme-v2 :where(h1, h2, h3, h4, p, li) {
+.theme-v2:not(.professional-app) :where(h1, h2, h3, h4, p, li) {
   color: #1a1a1a;
 }
 
 /* 次要文字 */
-.theme-v2 .text-sm,
-.theme-v2 small {
+.theme-v2:not(.professional-app) .text-sm,
+.theme-v2:not(.professional-app) small {
   color: #6b7280;
 }
 
 /* 数字/统计 */
-.theme-v2 .text-4xl,
-.theme-v2 .text-3xl,
-.theme-v2 .text-2xl,
-.theme-v2 .text-xl {
+.theme-v2:not(.professional-app) .text-4xl,
+.theme-v2:not(.professional-app) .text-3xl,
+.theme-v2:not(.professional-app) .text-2xl,
+.theme-v2:not(.professional-app) .text-xl {
   color: #0066ff !important;
   font-weight: 600 !important;
 }
 
 /* 按钮样式 */
-.theme-v2 button {
+.theme-v2:not(.professional-app) button {
   color: #1a1a1a;
 }
 
 /* 渐变按钮文字为白色 */
-.theme-v2 .bg-gradient-to-r,
-.theme-v2 .bg-gradient-to-r button,
-.theme-v2 .bg-gradient-to-r * {
+.theme-v2:not(.professional-app) .bg-gradient-to-r,
+.theme-v2:not(.professional-app) .bg-gradient-to-r button,
+.theme-v2:not(.professional-app) .bg-gradient-to-r * {
   color: #ffffff !important;
 }
 
 /* Sidebar导航按钮 */
-.theme-v2 .bg-blue-500,
-.theme-v2 .bg-blue-600 {
+.theme-v2:not(.professional-app) .bg-blue-500,
+.theme-v2:not(.professional-app) .bg-blue-600 {
   background: linear-gradient(135deg, #0066ff 0%, #0052cc 100%) !important;
   color: #ffffff !important;
 }
 
 /* 取消发光动画 */
-.theme-v2 .animate-pulse-glow {
+.theme-v2:not(.professional-app) .animate-pulse-glow {
   animation: none !important;
 }
 
 /* 悬停效果 */
-.theme-v2 .gradient-border:hover {
+.theme-v2:not(.professional-app) .gradient-border:hover {
   box-shadow: 0 4px 16px rgba(0, 102, 255, 0.15) !important;
   border-color: rgba(0, 102, 255, 0.3) !important;
 }
 
-/* Professional interview-demo theme. Keeps legacy components readable while removing neon-template styling. */
+/* Professional demo theme. Keeps legacy components readable while removing neon-template styling. */
 .professional-app {
   color-scheme: light;
   background: #f4f6f8;

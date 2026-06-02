@@ -39,6 +39,19 @@ interface UploadFileState {
   errorMessage?: string;
 }
 
+interface ProcessingResult {
+  success: boolean;
+  chunkCount?: number;
+  totalPages?: number;
+  totalImages?: number;
+  errorMessage?: string;
+}
+
+interface ProcessingBaseline {
+  totalDocuments: number;
+  totalChunks: number;
+}
+
 export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = false }: UploadDialogProps) {
   const [selectedKB, setSelectedKB] = useState<string | null>(preselectedKB || null);
   const [files, setFiles] = useState<File[]>([]);
@@ -119,6 +132,29 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
     }
   };
 
+  const fetchProcessingBaseline = async (knowledgeBaseId: string): Promise<ProcessingBaseline> => {
+    const fallbackKB = knowledgeBases.find((kb) => kb.collection_id === knowledgeBaseId);
+    const fallback = {
+      totalDocuments: fallbackKB?.total_documents || 0,
+      totalChunks: fallbackKB?.total_chunks || 0,
+    };
+
+    try {
+      const baseUrl = import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
+      const result = await safeFetchJSON(`${baseUrl}/knowledge_base/${knowledgeBaseId}/documents`);
+      if (result.status === 'success') {
+        return {
+          totalDocuments: result.total_documents || 0,
+          totalChunks: result.total_chunks || 0,
+        };
+      }
+    } catch (error) {
+      console.warn('获取处理基线失败，使用知识库列表统计:', error);
+    }
+
+    return fallback;
+  };
+
   const handleCreateKB = async () => {
     if (!newKBName.trim()) {
       toast.error('请输入知识库名称');
@@ -167,38 +203,43 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
   /**
    * Poll backend for file processing status after upload completes.
    * The backend processes the file (extract → chunk → embed) after receiving the upload.
-   * We poll the stats endpoint to check if processing is done.
+   * We poll the documents endpoint to check if processing is done.
    */
   const pollProcessingStatus = async (
     fileName: string,
     knowledgeBaseId: string,
+    baseline: ProcessingBaseline,
     maxAttempts: number = 60,
     intervalMs: number = 2000,
-  ): Promise<void> => {
+  ): Promise<ProcessingResult> => {
     const baseUrl = import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
 
       try {
-        const result = await safeFetchJSON(`${baseUrl}/stats/all`);
+        const result = await safeFetchJSON(`${baseUrl}/knowledge_base/${knowledgeBaseId}/documents`);
         if (result.status === 'success') {
-          const kb = result.data.collections?.find(
-            (c: KnowledgeBase) => c.collection_id === knowledgeBaseId,
-          );
-          if (kb) {
-            // Check if the document count increased — processing is done
+          const documents = result.documents || [];
+          const uploadedDocument = documents.find((doc: any) => doc.filename === fileName);
+          const totalDocuments = result.total_documents || 0;
+          const totalChunks = result.total_chunks || 0;
+          const collectionGrew =
+            totalDocuments > baseline.totalDocuments || totalChunks > baseline.totalChunks;
+
+          if (uploadedDocument || collectionGrew) {
+            const chunkCount = uploadedDocument?.chunks ?? totalChunks;
             setUploadProgress((prev) => ({
               ...prev,
               [fileName]: {
                 ...prev[fileName],
                 status: 'done',
                 progress: 100,
-                chunkCount: kb.total_chunks,
+                chunkCount,
                 message: '处理完成',
               },
             }));
-            return;
+            return { success: true, chunkCount };
           }
         }
       } catch (e) {
@@ -219,6 +260,10 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
         errorMessage: '处理超时，文件可能已上传成功，请刷新页面确认',
       },
     }));
+    return {
+      success: false,
+      errorMessage: '处理超时，文件可能已上传成功，请刷新页面确认',
+    };
   };
 
   /**
@@ -296,9 +341,13 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
     if (!selectedKB || files.length === 0) return;
 
     setUploading(true);
+    const successfulFiles: File[] = [];
+    let failedFiles = 0;
 
     try {
       for (const file of files) {
+        const baseline = await fetchProcessingBaseline(selectedKB);
+
         // Phase 1: Uploading with progress
         setUploadProgress((prev) => ({
           ...prev,
@@ -308,6 +357,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
         const uploadResult = await uploadFile(file, selectedKB, isV2);
 
         if (!uploadResult.success) {
+          failedFiles += 1;
           setUploadProgress((prev) => ({
             ...prev,
             [file.name]: {
@@ -347,6 +397,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
           }
         }
 
+        let processingResult: ProcessingResult;
+
         if (chunkCount !== undefined) {
           // Processing completed synchronously
           setUploadProgress((prev) => ({
@@ -360,35 +412,43 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
               message: '处理完成',
             },
           }));
+          processingResult = { success: true, chunkCount, totalPages, totalImages };
         } else {
           // Processing async — poll for completion
-          await pollProcessingStatus(file.name, selectedKB);
+          processingResult = await pollProcessingStatus(file.name, selectedKB, baseline);
+          if (!processingResult.success) {
+            failedFiles += 1;
+            toast.error(`${file.name} 处理状态未确认`, {
+              description: processingResult.errorMessage,
+            });
+            continue;
+          }
+          chunkCount = processingResult.chunkCount;
         }
 
         // Build toast message from local variables, not state
-        if (chunkCount !== undefined || totalPages !== undefined) {
-          let description = '文件已保存';
-          if (totalPages) {
-            description = `已提取 ${totalPages} 页`;
-            if (totalImages) description += `，${totalImages} 张图片`;
-          }
-          if (chunkCount) description += `，已切分为 ${chunkCount} 个块`;
-
-          toast.success(`${file.name} 上传成功`, { description });
-        } else {
-          // Async path — poll completed, toast with generic message
-          toast.success(`${file.name} 上传成功`, { description: '文件已保存' });
+        let description = '文件已保存';
+        if (totalPages) {
+          description = `已提取 ${totalPages} 页`;
+          if (totalImages) description += `，${totalImages} 张图片`;
         }
+        if (chunkCount) description += `，已切分为 ${chunkCount} 个块`;
+
+        toast.success(`${file.name} 上传成功`, { description });
+        successfulFiles.push(file);
       }
 
-      // All files done — notify parent and close
-      onUpload(files, selectedKB, config);
+      if (successfulFiles.length > 0) {
+        onUpload(successfulFiles, selectedKB, config);
+      }
 
-      setTimeout(() => {
-        onClose();
-        setFiles([]);
-        setUploadProgress({});
-      }, 2000);
+      if (failedFiles === 0) {
+        setTimeout(() => {
+          onClose();
+          setFiles([]);
+          setUploadProgress({});
+        }, 2000);
+      }
     } catch (error) {
       toast.error('上传过程中发生错误', {
         description: error instanceof Error ? error.message : '请稍后重试',

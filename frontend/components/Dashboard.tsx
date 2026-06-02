@@ -1,6 +1,6 @@
 import { ArrowRight, Bot, Clock3, Database, FileText, Layers3, MessageSquare, Search, TrendingDown, TrendingUp, Upload } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UploadDialog } from './UploadDialog';
 import { config } from '../src/config';
 import { safeFetchJSON } from '../src/api';
@@ -19,7 +19,7 @@ export function Dashboard({ onNavigate, isV2 = false }: DashboardProps = {}) {
     { id: 4, label: '响应时间', value: '0', unit: 'ms', icon: '⚡', gradient: 'from-[#ffb800] to-[#ff8c00]', trend: '-0ms', trendUp: true },
   ]);
 
-  const fetchStatsRef = { current: null as (() => void) | null };
+  const fetchStatsRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +139,7 @@ export function Dashboard({ onNavigate, isV2 = false }: DashboardProps = {}) {
             多模态 RAG-OCR 知识库工作台
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#475569]">
-            面向 PDF 入库、OCR 切分、向量检索和答案溯源的端到端演示环境。上传、检索和问答入口都放在首屏，面试演示不用解释半天。
+            面向 PDF 入库、OCR 切分、向量检索和答案溯源的端到端演示环境。上传、检索和问答入口都放在首屏，现场演示不用解释半天。
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
@@ -297,6 +297,8 @@ export function Dashboard({ onNavigate, isV2 = false }: DashboardProps = {}) {
                   setShowUploadDialog(true);
                 } else if (action.id === 2 && onNavigate) {
                   onNavigate('chat');
+                } else if (action.id === 3 && onNavigate) {
+                  onNavigate('retrieval');
                 }
               }}
               initial={{ opacity: 0, scale: 0.9 }}
