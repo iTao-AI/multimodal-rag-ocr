@@ -3,24 +3,23 @@ import { motion } from 'motion/react';
 
 interface HeaderProps {
   title: string;
-  sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
 }
 
-export function Header({ title, sidebarOpen = true, onToggleSidebar }: HeaderProps) {
+export function Header({ title, onToggleSidebar }: HeaderProps) {
   return (
-    <header className={`h-16 glass fixed top-0 ${sidebarOpen ? 'left-[260px]' : 'left-0'} right-0 z-40 border-b border-[rgba(0,212,255,0.15)] transition-all duration-300`}>
-      <div className="h-full px-6 flex items-center justify-between">
+    <header className="h-16 bg-white/95 backdrop-blur-sm fixed top-0 left-0 lg:left-[260px] right-0 z-40 border-b border-[#dbe3ea] transition-all duration-300">
+      <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Mobile hamburger menu */}
           <button
             onClick={onToggleSidebar}
-            className="lg:hidden text-[#00d4ff] hover:text-[#00ffaa] transition-colors"
+            className="lg:hidden text-[#334155] hover:text-[#0f766e] transition-colors"
           >
             <Menu size={24} />
           </button>
           <motion.h2
-            className="text-[#e8eaed]"
+            className="text-lg font-semibold text-[#111827]"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -32,28 +31,28 @@ export function Header({ title, sidebarOpen = true, onToggleSidebar }: HeaderPro
         <div className="flex items-center gap-3">
           {/* Activity Indicator */}
           <motion.div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass border border-[rgba(0,212,255,0.2)]"
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#ecfdf5] border border-[#bbf7d0]"
             whileHover={{ scale: 1.05 }}
           >
-            <Activity size={14} className="text-[#00ff88]" />
-            <span className="text-xs text-[#94a3b8]">运行中</span>
+            <Activity size={14} className="text-[#059669]" />
+            <span className="text-xs font-medium text-[#047857]">服务运行中</span>
           </motion.div>
 
-          <motion.button 
-            className="w-10 h-10 rounded-xl glass-strong flex items-center justify-center transition-all duration-300 hover:bg-[rgba(0,212,255,0.1)] hover:shadow-[0_0_15px_rgba(0,212,255,0.3)] relative group"
+          <motion.button
+            className="w-10 h-10 rounded-md border border-[#dbe3ea] bg-white flex items-center justify-center transition-all duration-200 hover:bg-[#f8fafc] relative group"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
+            title="通知功能待实现"
           >
-            <Bell size={18} className="text-[#94a3b8] group-hover:text-[#00d4ff] transition-colors" />
-            <div className="absolute top-2 right-2 w-2 h-2 bg-[#ff3b5c] rounded-full animate-pulse" />
+            <Bell size={18} className="text-[#64748b] group-hover:text-[#0f766e] transition-colors" />
           </motion.button>
           
           <motion.button 
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center shadow-[0_0_20px_rgba(0,212,255,0.4)] hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all duration-300"
+            className="w-10 h-10 rounded-md bg-[#0f766e] flex items-center justify-center transition-all duration-200 hover:bg-[#115e59]"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <User size={18} className="text-[#0a0e27]" />
+            <User size={18} className="text-white" />
           </motion.button>
         </div>
       </div>

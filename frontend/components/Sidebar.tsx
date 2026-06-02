@@ -1,4 +1,4 @@
-import { Home, Database, MessageSquare, Search, Settings, Zap, Sparkles, X } from 'lucide-react';
+import { Home, Database, MessageSquare, Search, Settings, Layers3, X } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SidebarProps {
@@ -22,17 +22,20 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
   return (
     <>
       {/* Mobile sidebar overlay - slide in from left */}
-      <div className={`lg:hidden fixed inset-y-0 left-0 z-50 w-[260px] glass-strong border-r border-[rgba(0,212,255,0.15)] transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`lg:hidden fixed inset-y-0 left-0 z-50 w-[260px] border-r border-[#dbe3ea] bg-white transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-full flex flex-col">
           {/* Mobile header with close button */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-[rgba(0,212,255,0.15)]">
+          <div className="h-16 flex items-center justify-between px-5 border-b border-[#e5eaf0]">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center animate-pulse-glow">
-                <Zap size={18} className="text-[#0a0e27]" />
+              <div className="w-8 h-8 rounded-md bg-[#0f766e] flex items-center justify-center">
+                <Layers3 size={17} className="text-white" />
               </div>
-              <h1 className="text-gradient">多模态RAG系统</h1>
+              <div>
+                <h1 className="text-sm font-semibold text-[#111827]">RAG OCR</h1>
+                <p className="text-[11px] text-[#64748b]">Evidence Workspace</p>
+              </div>
             </div>
-            <button onClick={onToggle} className="text-[#94a3b8] hover:text-[#e8eaed] transition-colors">
+            <button onClick={onToggle} className="text-[#64748b] hover:text-[#111827] transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -51,20 +54,20 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
                   disabled={isDisabled}
-                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-md transition-all duration-200 group ${
                     isDisabled
-                      ? 'text-[#64748b] opacity-50 cursor-not-allowed'
+                      ? 'text-[#94a3b8] opacity-70 cursor-not-allowed'
                       : isActive
-                      ? 'bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] shadow-[0_0_20px_rgba(0,212,255,0.4)]'
-                      : 'text-[#e8eaed] hover:bg-[rgba(0,212,255,0.1)]'
+                      ? 'bg-[#0f766e] text-white shadow-sm'
+                      : 'text-[#475569] hover:bg-[#eef3f1] hover:text-[#0f172a]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon size={20} className={`${isDisabled ? 'text-[#64748b]' : isActive ? 'text-[#0a0e27]' : 'group-hover:text-[#00d4ff]'} transition-colors`} />
-                    <span>{item.label}</span>
+                    <Icon size={18} className={`${isDisabled ? 'text-[#94a3b8]' : isActive ? 'text-white' : 'text-[#64748b] group-hover:text-[#0f766e]'} transition-colors`} />
+                    <span className="text-sm font-medium">{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className="px-2 py-0.5 text-xs bg-[rgba(255,184,0,0.15)] text-[#ffb800] rounded-full border border-[rgba(255,184,0,0.3)]">
+                    <span className="px-2 py-0.5 text-[11px] bg-[#fef3c7] text-[#92400e] rounded-full border border-[#fde68a]">
                       {item.badge}
                     </span>
                   )}
@@ -74,17 +77,17 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
           </nav>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-[rgba(0,212,255,0.15)]">
+          <div className="px-5 py-4 border-t border-[#e5eaf0]">
             <motion.button
               onClick={onToggleVersion}
-              className="text-[#94a3b8] text-xs flex items-center gap-2 hover:text-[#00d4ff] transition-colors cursor-pointer w-full"
+              className="text-[#64748b] text-xs flex items-center gap-2 hover:text-[#0f766e] transition-colors cursor-pointer w-full"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-[#10b981]" />
               <span>
                 <span className="font-medium">{isV2 ? 'OCR模式 v2.0.0' : 'VLM模式 v1.0.0'}</span>
-                <span className="text-[10px] text-[#64748b] ml-1">{isV2 ? '(点击切换 VLM)' : '(点击切换 OCR)'}</span>
+                <span className="text-[10px] text-[#94a3b8] ml-1">{isV2 ? '(切换 VLM)' : '(切换 OCR)'}</span>
               </span>
             </motion.button>
           </div>
@@ -92,19 +95,22 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex w-[260px] h-screen glass-strong fixed left-0 top-0 flex-col z-50 border-r border-[rgba(0,212,255,0.15)]">
+      <div className="hidden lg:flex w-[260px] h-screen bg-white fixed left-0 top-0 flex-col z-50 border-r border-[#dbe3ea]">
         {/* Logo/Brand */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-[rgba(0,212,255,0.15)]">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-[#e5eaf0]">
           <motion.div
             className="flex items-center gap-2"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center animate-pulse-glow">
-              <Zap size={18} className="text-[#0a0e27]" />
+            <div className="w-8 h-8 rounded-md bg-[#0f766e] flex items-center justify-center">
+              <Layers3 size={17} className="text-white" />
             </div>
-            <h1 className="text-gradient">多模态RAG系统</h1>
+            <div>
+              <h1 className="text-sm font-semibold text-[#111827]">RAG OCR</h1>
+              <p className="text-[11px] text-[#64748b]">Evidence Workspace</p>
+            </div>
           </motion.div>
 
           {/* Version toggle */}
@@ -113,9 +119,8 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
               onClick={onToggleVersion}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] hover:shadow-lg transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-[#eef7f4] text-[#0f766e] border border-[#cde7de] hover:bg-[#dff0eb] transition-all"
             >
-              <Sparkles size={10} />
               <span>{isV2 ? '2.0' : '1.0'}</span>
             </motion.button>
           )}
@@ -136,20 +141,20 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 disabled={isDisabled}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-md transition-all duration-200 group ${
                   isDisabled
-                    ? 'text-[#64748b] opacity-50 cursor-not-allowed'
+                    ? 'text-[#94a3b8] opacity-70 cursor-not-allowed'
                     : isActive
-                    ? 'bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] shadow-[0_0_20px_rgba(0,212,255,0.4)]'
-                    : 'text-[#e8eaed] hover:bg-[rgba(0,212,255,0.1)]'
+                    ? 'bg-[#0f766e] text-white shadow-sm'
+                    : 'text-[#475569] hover:bg-[#eef3f1] hover:text-[#0f172a]'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon size={20} className={`${isDisabled ? 'text-[#64748b]' : isActive ? 'text-[#0a0e27]' : 'group-hover:text-[#00d4ff]'} transition-colors`} />
-                  <span>{item.label}</span>
+                  <Icon size={18} className={`${isDisabled ? 'text-[#94a3b8]' : isActive ? 'text-white' : 'text-[#64748b] group-hover:text-[#0f766e]'} transition-colors`} />
+                  <span className="text-sm font-medium">{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className="px-2 py-0.5 text-xs bg-[rgba(255,184,0,0.15)] text-[#ffb800] rounded-full border border-[rgba(255,184,0,0.3)]">
+                  <span className="px-2 py-0.5 text-[11px] bg-[#fef3c7] text-[#92400e] rounded-full border border-[#fde68a]">
                     {item.badge}
                   </span>
                 )}
@@ -159,23 +164,23 @@ export function Sidebar({ activeView, onNavigate, isV2 = false, onToggleVersion,
         </nav>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[rgba(0,212,255,0.15)]">
+        <div className="px-5 py-4 border-t border-[#e5eaf0]">
           <motion.button
             onClick={onToggleVersion}
-            className="text-[#94a3b8] text-xs flex items-center gap-2 hover:text-[#00d4ff] transition-colors cursor-pointer w-full"
+            className="text-[#64748b] text-xs flex items-center gap-2 hover:text-[#0f766e] transition-colors cursor-pointer w-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-[#10b981]" />
             <span>
               <span className="font-medium">
                 {isV2 ? 'OCR模式 v2.0.0' : 'VLM模式 v1.0.0'}
               </span>
-              <span className="text-[10px] text-[#64748b] ml-1">
-                {isV2 ? '(点击切换 VLM v1.0.0)' : '(点击切换 OCR v2.0.0)'}
+              <span className="text-[10px] text-[#94a3b8] ml-1">
+                {isV2 ? '(切换 VLM)' : '(切换 OCR)'}
               </span>
             </span>
           </motion.button>
