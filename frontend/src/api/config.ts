@@ -5,16 +5,16 @@
  * 端点根据所选方法自动确定。
  */
 
+export type ExtractionMode = 'fast' | 'vlm' | 'mineru' | 'deepseek' | 'paddleocr_vl';
+export type ChunkMethod = 'header_recursive' | 'markdown_only' | 'ocr_aware' | 'layout_based';
+
 export interface ExtractionMethod {
-  id: string;
+  id: ExtractionMode;
   label: string;
   description: string;
   /** 该方法对应的上传端点 */
   endpoint: string;
 }
-
-export type ExtractionMode = 'fast' | 'vlm' | 'mineru' | 'deepseek' | 'paddleocr_vl';
-export type ChunkMethod = 'header_recursive' | 'markdown_only' | 'ocr_aware' | 'layout_based';
 
 /** 全部 5 个提取方法，各自带端点路由 */
 const ALL_EXTRACTION_METHODS: ExtractionMethod[] = [
