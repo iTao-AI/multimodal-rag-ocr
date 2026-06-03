@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { X, Upload, FileText, Settings, AlertCircle, CheckCircle, Loader2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { getExtractionMethods, getUploadEndpoint, getDefaultExtractionMethod } from '../src/api/config';
+import { getAllExtractionMethods, getUploadEndpointByMethod, getDefaultExtractionMethod, getChunkMethods } from '../src/api/config';
 import { safeFetchJSON } from '../src/api';
 
 interface UploadDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (files: File[], kbId: string, config: UploadConfig) => void;
-  preselectedKB?: string; // 预选的知识库ID
-  isV2?: boolean; // 版本标识
+  preselectedKB?: string;
 }
 
 interface UploadConfig {
@@ -52,7 +51,7 @@ interface ProcessingBaseline {
   totalChunks: number;
 }
 
-export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = false }: UploadDialogProps) {
+export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: UploadDialogProps) {
   const [selectedKB, setSelectedKB] = useState<string | null>(preselectedKB || null);
   const [files, setFiles] = useState<File[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -63,18 +62,18 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
   const [showCreateKB, setShowCreateKB] = useState(false);
   const [newKBName, setNewKBName] = useState('');
   
-  // 根据版本初始化配置
+  // 初始化配置
+  const allExtractionMethods = getAllExtractionMethods();
+  const allChunkMethods = getChunkMethods();
+
   const [config, setConfig] = useState<UploadConfig>({
-    extractionMode: getDefaultExtractionMethod(isV2),
+    extractionMode: getDefaultExtractionMethod(),
     chunkSize: 1500,
     overlap: 200,
     maxPageSpan: 3,
     bridgeLength: 100,
-    chunkingMethod: isV2 ? 'ocr_aware' : 'header_recursive',
+    chunkingMethod: 'header_recursive',
   });
-  
-  // 获取当前版本的提取方法列表
-  const extractionMethods = getExtractionMethods(isV2);
 
   // 从Milvus API获取知识库列表
   useEffect(() => {
@@ -100,28 +99,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
 
       if (result.status === 'success') {
         const collections = result.data.collections || [];
-        
-        // ✅ 根据版本过滤知识库
-        // V1模式：只显示不带 _v2 后缀的
-        // V2模式：只显示带 _v2 后缀的
-        const filteredCollections = collections.filter((col: KnowledgeBase) => {
-          // 修复：检查 collection_name 而不是 collection_id
-          const isV2Collection = col.collection_name.endsWith('_v2');
-          return isV2 ? isV2Collection : !isV2Collection;
-        });
-        
-        // ✅ V2模式：去掉显示名称的 _v2 后缀
-        const processedCollections = filteredCollections.map((col: KnowledgeBase) => {
-          if (isV2 && col.collection_name.endsWith('_v2')) {
-            return {
-              ...col,
-              collection_name: col.collection_name.slice(0, -3)  // 去掉 "_v2"
-            };
-          }
-          return col;
-        });
-        
-        setKnowledgeBases(processedCollections);
+        setKnowledgeBases(collections);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : '未知错误';
@@ -162,8 +140,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
     }
 
     try {
-      // ✅ V2模式：自动添加 _v2 后缀
-      const actualKBName = isV2 ? `${newKBName}_v2` : newKBName;
+      // 创建知识库
+      const actualKBName = newKBName;
       
       const baseUrl = import.meta.env.VITE_MILVUS_API_URL || 'http://localhost:8000';
       const result = await safeFetchJSON(
@@ -272,10 +250,9 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
   const uploadFile = (
     file: File,
     knowledgeBaseId: string,
-    isV2: boolean,
   ): Promise<{ success: boolean; data?: any; error?: string }> => {
     return new Promise((resolve) => {
-      const uploadEndpoint = getUploadEndpoint(isV2);
+      const uploadEndpoint = getUploadEndpointByMethod(config.extractionMode);
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener('progress', (e) => {
@@ -354,7 +331,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
           [file.name]: { status: 'uploading', progress: 0 },
         }));
 
-        const uploadResult = await uploadFile(file, selectedKB, isV2);
+        const uploadResult = await uploadFile(file, selectedKB);
 
         if (!uploadResult.success) {
           failedFiles += 1;
@@ -477,19 +454,19 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative z-10 w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-lg border border-[#dbe3ea] bg-white shadow-xl"
+          className="relative z-10 w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-[#e5eaf0]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-md bg-[#0f766e] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
                 <Upload size={20} className="text-white" />
               </div>
-              <h2 className="text-xl font-semibold text-[#111827]">上传文档</h2>
+              <h2 className="text-xl font-semibold text-foreground">上传文档</h2>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-md hover:bg-[#f1f5f9] transition-colors flex items-center justify-center text-[#64748b] hover:text-[#111827]"
+              className="w-8 h-8 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground hover:text-foreground"
             >
               <X size={20} />
             </button>
@@ -512,8 +489,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                     whileTap={uploading ? {} : { scale: 0.95 }}
                     className={`flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md transition-all ${
                       uploading
-                        ? 'text-[#94a3b8] border-[#dbe3ea] cursor-not-allowed'
-                        : 'text-[#0f766e] border-[#cde7de] hover:bg-[#eef7f4]'
+                        ? 'text-muted-foreground border-border cursor-not-allowed'
+                        : 'text-primary border-primary/30 hover:bg-secondary'
                     }`}
                   >
                     <Plus size={14} />
@@ -530,13 +507,13 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                       exit={{ opacity: 0, height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="flex gap-2 p-3 rounded-md border border-[#dbe3ea] bg-[#f8fafc]">
+                      <div className="flex gap-2 p-3 rounded-md border border-border bg-secondary">
                         <input
                           type="text"
                           value={newKBName}
                           onChange={(e) => setNewKBName(e.target.value)}
                           placeholder="输入知识库名称（支持中文）"
-                          className="flex-1 px-3 py-2 rounded-md border border-[#cbd5e1] bg-white text-[#111827] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                          className="flex-1 px-3 py-2 rounded-md border border-border bg-card text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           onKeyDown={(e) => e.key === 'Enter' && handleCreateKB()}
                           autoFocus
                         />
@@ -544,7 +521,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                           onClick={handleCreateKB}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          className="px-4 py-2 rounded-md bg-[#0f766e] text-white transition-colors hover:bg-[#115e59]"
+                          className="px-4 py-2 rounded-md bg-primary text-white transition-colors hover:bg-primary/90"
                         >
                           创建
                         </motion.button>
@@ -556,10 +533,10 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                 {/* KB List */}
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 size={24} className="text-[#0f766e] animate-spin" />
+                    <Loader2 size={24} className="text-primary animate-spin" />
                   </div>
                 ) : knowledgeBases.length === 0 ? (
-                  <div className="text-center py-8 text-[#64748b]">
+                  <div className="text-center py-8 text-muted-foreground">
                     暂无知识库，请先创建一个
                   </div>
                 ) : (
@@ -573,21 +550,21 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                         whileTap={uploading ? {} : { scale: 0.98 }}
                         className={`p-4 rounded-md border transition-all text-left ${
                           uploading
-                            ? 'border-[#dbe3ea] cursor-not-allowed opacity-50'
+                            ? 'border-border cursor-not-allowed opacity-50'
                             : selectedKB === kb.collection_id
-                              ? 'border-[#0f766e] bg-[#eef7f4]'
-                              : 'border-[#dbe3ea] bg-white hover:border-[#0f766e] hover:bg-[#f8fafc]'
+                              ? 'border-[#0f766e] bg-secondary'
+                              : 'border-border bg-card hover:border-primary hover:bg-secondary'
                         }`}
                       >
                         <div
                           className={`mb-1 truncate ${
-                            selectedKB === kb.collection_id ? 'text-[#0f766e] font-medium' : 'text-[#111827]'
+                            selectedKB === kb.collection_id ? 'text-primary font-medium' : 'text-foreground'
                           }`}
                           title={kb.collection_name}
                         >
                           {kb.collection_name}
                         </div>
-                        <div className="text-xs text-[#64748b]">
+                        <div className="text-xs text-muted-foreground">
                           {kb.total_documents} 文档 · {kb.total_chunks} chunks
                         </div>
                       </motion.button>
@@ -604,8 +581,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                   onDragOver={uploading ? (e) => e.preventDefault() : (e) => e.preventDefault()}
                   className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
                     uploading
-                      ? 'border-[#dbe3ea] cursor-not-allowed opacity-50'
-                      : 'border-[#cbd5e1] bg-[#f8fafc] hover:border-[#0f766e] cursor-pointer'
+                      ? 'border-border cursor-not-allowed opacity-50'
+                      : 'border-border bg-secondary hover:border-primary cursor-pointer'
                   }`}
                 >
                   <input
@@ -617,9 +594,9 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                     accept=".pdf"
                   />
                   <label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload size={48} className="mx-auto mb-4 text-[#0f766e]" />
-                    <p className="text-[#111827] mb-2">点击或拖拽文件到此处</p>
-                    <p className="text-sm text-[#64748b]">目前仅支持 PDF 格式</p>
+                    <Upload size={48} className="mx-auto mb-4 text-primary" />
+                    <p className="text-foreground mb-2">点击或拖拽文件到此处</p>
+                    <p className="text-sm text-muted-foreground">目前仅支持 PDF 格式</p>
                   </label>
                 </div>
 
@@ -634,12 +611,12 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                       return (
                         <div
                           key={index}
-                          className="p-3 rounded-md border border-[#dbe3ea] bg-white"
+                          className="p-3 rounded-md border border-border bg-card"
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
                               {status === 'uploading' && (
-                                <Loader2 size={16} className="text-[#0f766e] animate-spin flex-shrink-0" />
+                                <Loader2 size={16} className="text-primary animate-spin flex-shrink-0" />
                               )}
                               {status === 'processing' && (
                                 <Loader2 size={16} className="text-[#ffb800] animate-spin flex-shrink-0" />
@@ -650,16 +627,16 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                               {status === 'error' && (
                                 <AlertCircle size={16} className="text-[#ff3b5c] flex-shrink-0" />
                               )}
-                              {status === 'idle' && <FileText size={16} className="text-[#0f766e] flex-shrink-0" />}
-                              <span className="text-[#111827] truncate">{file.name}</span>
-                              <span className="text-xs text-[#64748b] flex-shrink-0">
+                              {status === 'idle' && <FileText size={16} className="text-primary flex-shrink-0" />}
+                              <span className="text-foreground truncate">{file.name}</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
                                 {(file.size / 1024 / 1024).toFixed(2)} MB
                               </span>
                             </div>
                             {!uploading && status === 'idle' && (
                               <button
                                 onClick={() => setFiles(files.filter((_, i) => i !== index))}
-                                className="text-[#64748b] hover:text-[#dc2626] transition-colors flex-shrink-0"
+                                className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
                               >
                                 <X size={16} />
                               </button>
@@ -669,13 +646,13 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                           {/* Progress Bar (uploading) */}
                           {status === 'uploading' && (
                             <div className="mt-2">
-                              <div className="flex items-center justify-between text-xs text-[#64748b] mb-1">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                 <span>上传中</span>
                                 <span>{progress}%</span>
                               </div>
                               <div className="w-full h-1.5 bg-[#e5e7eb] rounded-full overflow-hidden">
                                 <motion.div
-                                  className="h-full bg-[#0f766e] rounded-full"
+                                  className="h-full bg-primary rounded-full"
                                   initial={{ width: 0 }}
                                   animate={{ width: `${progress}%` }}
                                   transition={{ duration: 0.2 }}
@@ -718,7 +695,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
               {/* Advanced Settings Toggle */}
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-[#0f766e] transition-colors hover:text-[#115e59]"
+                className="flex items-center gap-2 text-primary transition-colors hover:text-[#115e59]"
               >
                 <Settings size={16} />
                 {showAdvanced ? '隐藏' : '显示'}高级配置
@@ -737,25 +714,24 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                     <div className="space-y-3">
                       <label className="text-[#334155] font-medium">
                         提取模式
-                        {isV2 && <span className="ml-2 text-xs text-[#0f766e]">(OCR 2.0)</span>}
-                      </label>
-                      <div className={`grid ${extractionMethods.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
-                        {extractionMethods.map((method) => (
+                                              </label>
+                      <div className={`grid ${grid-cols-2 sm:grid-cols-3} gap-3`}>
+                        {allExtractionMethods.map((method) => (
                           <button
                             key={method.id}
                             onClick={() => setConfig({ ...config, extractionMode: method.id })}
                             className={`p-4 rounded-md border transition-all text-left ${
                               config.extractionMode === method.id
-                                ? 'border-[#0f766e] bg-[#eef7f4]'
-                                : 'border-[#dbe3ea] bg-white hover:border-[#0f766e] hover:bg-[#f8fafc]'
+                                ? 'border-[#0f766e] bg-secondary'
+                                : 'border-border bg-card hover:border-primary hover:bg-secondary'
                             }`}
                           >
                             <div className={
-                              config.extractionMode === method.id ? 'text-[#0f766e] font-medium' : 'text-[#111827]'
+                              config.extractionMode === method.id ? 'text-primary font-medium' : 'text-foreground'
                             }>
                               {method.label}
                             </div>
-                            <div className="text-xs mt-1 text-[#64748b]">
+                            <div className="text-xs mt-1 text-muted-foreground">
                               {method.description}
                             </div>
                           </button>
@@ -768,76 +744,66 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
                       <label className="text-[#334155] font-medium">切分参数</label>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm text-[#64748b]">Chunk Size</label>
+                          <label className="text-sm text-muted-foreground">Chunk Size</label>
                           <div className="flex gap-2">
                             <input
                               type="number"
                               value={config.chunkSize}
                               onChange={(e) => setConfig({ ...config, chunkSize: parseInt(e.target.value) })}
-                              className="flex-1 px-3 py-2 rounded-md border border-[#cbd5e1] bg-white text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                              className="flex-1 px-3 py-2 rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
-                            <span className="px-3 py-2 rounded-md bg-[#f1f5f9] text-sm text-[#64748b]">tokens</span>
+                            <span className="px-3 py-2 rounded-md bg-secondary text-sm text-muted-foreground">tokens</span>
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-sm text-[#64748b]">Overlap</label>
+                          <label className="text-sm text-muted-foreground">Overlap</label>
                           <div className="flex gap-2">
                             <input
                               type="number"
                               value={config.overlap}
                               onChange={(e) => setConfig({ ...config, overlap: parseInt(e.target.value) })}
-                              className="flex-1 px-3 py-2 rounded-md border border-[#cbd5e1] bg-white text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                              className="flex-1 px-3 py-2 rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
-                            <span className="px-3 py-2 rounded-md bg-[#f1f5f9] text-sm text-[#64748b]">tokens</span>
+                            <span className="px-3 py-2 rounded-md bg-secondary text-sm text-muted-foreground">tokens</span>
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-sm text-[#64748b]">Max Page Span</label>
+                          <label className="text-sm text-muted-foreground">Max Page Span</label>
                           <div className="flex gap-2">
                             <input
                               type="number"
                               value={config.maxPageSpan}
                               onChange={(e) => setConfig({ ...config, maxPageSpan: parseInt(e.target.value) })}
-                              className="flex-1 px-3 py-2 rounded-md border border-[#cbd5e1] bg-white text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                              className="flex-1 px-3 py-2 rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
-                            <span className="px-3 py-2 rounded-md bg-[#f1f5f9] text-sm text-[#64748b]">pages</span>
+                            <span className="px-3 py-2 rounded-md bg-secondary text-sm text-muted-foreground">pages</span>
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-sm text-[#64748b]">Bridge Length</label>
+                          <label className="text-sm text-muted-foreground">Bridge Length</label>
                           <div className="flex gap-2">
                             <input
                               type="number"
                               value={config.bridgeLength}
                               onChange={(e) => setConfig({ ...config, bridgeLength: parseInt(e.target.value) })}
-                              className="flex-1 px-3 py-2 rounded-md border border-[#cbd5e1] bg-white text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                              className="flex-1 px-3 py-2 rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
-                            <span className="px-3 py-2 rounded-md bg-[#f1f5f9] text-sm text-[#64748b]">tokens</span>
+                            <span className="px-3 py-2 rounded-md bg-secondary text-sm text-muted-foreground">tokens</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-sm text-[#64748b]">切分方法</label>
+                        <label className="text-sm text-muted-foreground">切分方法</label>
                         <select
                           value={config.chunkingMethod}
                           onChange={(e) => setConfig({ ...config, chunkingMethod: e.target.value })}
-                          className="w-full px-3 py-2 rounded-md border border-[#cbd5e1] bg-white text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                          className="w-full px-3 py-2 rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         >
-                          {isV2 ? (
-                            <>
-                              <option value="ocr_aware">OCR感知切分</option>
-                              <option value="layout_based">版面感知切分</option>
-                            </>
-                          ) : (
-                            <>
-                              <option value="header_recursive">递归标题分割</option>
-                              <option value="markdown_only">自定义Markdown分割</option>
-                            </>
-                          )}
+                          {allChunkMethods.map((method) => (<option key={method} value={method}>{method}</option>))}
                         </select>
                       </div>
                     </div>
@@ -847,7 +813,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
 
               {/* Warning */}
               {!selectedKB && files.length > 0 && (
-                <div className="flex items-center gap-2 p-3 rounded-md border border-[#fde68a] bg-[#fffbeb]">
+                <div className="flex items-center gap-2 p-3 rounded-md border border-warning/30 bg-[#fffbeb]">
                   <AlertCircle size={16} className="text-[#ffb800]" />
                   <span className="text-sm text-[#ffb800]">请先选择一个知识库</span>
                 </div>
@@ -856,7 +822,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-[#e5eaf0] bg-[#f8fafc]">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-[#e5eaf0] bg-secondary">
             <motion.button
               onClick={onClose}
               disabled={uploading}
@@ -864,8 +830,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
               whileTap={uploading ? {} : { scale: 0.95 }}
               className={`px-6 py-3 rounded-md border transition-all ${
                 uploading
-                  ? 'border-[#dbe3ea] bg-white text-[#94a3b8] cursor-not-allowed'
-                  : 'border-[#cbd5e1] bg-white text-[#334155] hover:bg-[#f1f5f9]'
+                  ? 'border-border bg-card text-muted-foreground cursor-not-allowed'
+                  : 'border-border bg-card text-[#334155] hover:bg-secondary'
               }`}
             >
               {uploading ? '上传中不可取消' : '取消'}
@@ -877,12 +843,12 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB, isV2 = 
               whileTap={selectedKB && files.length > 0 && !uploading ? { scale: 0.95 } : {}}
               className={`px-6 py-3 rounded-md transition-all relative overflow-hidden group flex items-center gap-2 ${
                 selectedKB && files.length > 0 && !uploading
-                  ? 'bg-[#0f766e] text-white hover:bg-[#115e59]'
-                  : 'bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed'
+                  ? 'bg-primary text-white hover:bg-primary/90'
+                  : 'bg-[#e2e8f0] text-muted-foreground cursor-not-allowed'
               }`}
             >
               {selectedKB && files.length > 0 && !uploading && (
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-card/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               )}
               {uploading && <Loader2 size={16} className="animate-spin" />}
               <span className="relative z-10">
