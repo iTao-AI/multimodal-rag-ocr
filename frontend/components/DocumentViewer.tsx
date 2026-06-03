@@ -130,7 +130,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-xl shadow-lg">
             📄
           </div>
-          <h2 className="text-gradient">{docData.filename}</h2>
+          <h2 className="text-primary">{docData.filename}</h2>
         </div>
       </motion.div>
 
@@ -141,7 +141,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="border-b border-[rgba(0,212,255,0.15)]">
+        <div className="border-b border-[rgba(20,184,166,0.1)]">
           <div className="flex">
             {tabs.map((tab, index) => (
               <motion.button
@@ -179,7 +179,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
               animate={{ opacity: 1, y: 0 }}
             >
               <h3 className="text-foreground">PDF文档</h3>
-              <div className="aspect-[8.5/11] bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl overflow-hidden">
+              <div className="aspect-[8.5/11] bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl overflow-hidden">
                 <iframe
                   src={`${config.milvusApiUrl}${docData.pdf_url}`}
                   className="w-full h-full"
@@ -202,26 +202,26 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                   onClick={handleCopyMarkdown}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all flex items-center gap-2 text-foreground"
+                  className="px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] transition-all flex items-center gap-2 text-foreground"
                 >
                   <Copy size={16} className="text-primary" />
                   复制
                 </motion.button>
               </div>
 
-              <div className="p-6 rounded-xl bg-card border border-border border border-[rgba(0,212,255,0.3)] max-h-[600px] overflow-y-auto">
+              <div className="p-6 rounded-xl bg-card border border-border border border-[rgba(20,184,166,0.2)] max-h-[600px] overflow-y-auto">
                 <div className="prose prose-invert max-w-none text-foreground">
                   <ReactMarkdown
                     components={{
-                      h1: ({node, ...props}) => <h1 className="text-2xl text-gradient mb-4" {...props} />,
+                      h1: ({node, ...props}) => <h1 className="text-2xl text-primary mb-4" {...props} />,
                       h2: ({node, ...props}) => <h2 className="text-xl text-primary mb-3" {...props} />,
                       h3: ({node, ...props}) => <h3 className="text-lg text-primary mb-2" {...props} />,
                       p: ({node, ...props}) => <p className="text-muted-foreground mb-3" {...props} />,
                       code: ({node, ...props}) => (
-                        <code className="bg-[rgba(0,212,255,0.1)] text-success px-2 py-1 rounded" {...props} />
+                        <code className="bg-[rgba(20,184,166,0.08)] text-success px-2 py-1 rounded" {...props} />
                       ),
                       pre: ({node, ...props}) => (
-                        <pre className="bg-[rgba(0,212,255,0.1)] p-4 rounded-xl overflow-x-auto" {...props} />
+                        <pre className="bg-[rgba(20,184,166,0.08)] p-4 rounded-xl overflow-x-auto" {...props} />
                       ),
                       // Hide page screenshot images - users see them in PDF tab instead
                       img: () => null,
@@ -265,7 +265,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                       </span>
                     </div>
 
-                    <div className="p-4 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.1)] font-mono text-sm mb-4 text-muted-foreground max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+                    <div className="p-4 bg-card border border-border rounded-xl border border-[rgba(20,184,166,0.08)] font-mono text-sm mb-4 text-muted-foreground max-h-[200px] overflow-y-auto whitespace-pre-wrap">
                       {chunk.text}
                     </div>
 
@@ -299,11 +299,11 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                   文档信息
                 </h3>
                 <div className="space-y-3">
-                  <div className="p-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl">
+                  <div className="p-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl">
                     <p className="text-muted-foreground mb-2">总页数</p>
                     <div className="text-2xl text-primary">{docData.total_pages}</div>
                   </div>
-                  <div className="p-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl">
+                  <div className="p-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl">
                     <p className="text-muted-foreground mb-2">提取时间</p>
                     <div className="text-sm text-primary">
                       {new Date(docData.extraction_time).toLocaleString('zh-CN')}
@@ -318,11 +318,11 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                   切分统计
                 </h3>
                 <div className="space-y-3">
-                  <div className="p-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl">
+                  <div className="p-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl">
                     <p className="text-muted-foreground mb-2">总切分块数</p>
                     <div className="text-2xl text-primary">{docData.total_chunks}</div>
                   </div>
-                  <div className="p-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl">
+                  <div className="p-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl">
                     <p className="text-muted-foreground mb-2">跨页块数</p>
                     <div className="text-2xl text-success">
                       {docData.chunks.filter(c => c.cross_page_bridge).length}
@@ -337,7 +337,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                   图片统计
                 </h3>
                 <div className="space-y-3">
-                  <div className="p-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl">
+                  <div className="p-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl">
                     <p className="text-muted-foreground mb-2">提取图片数</p>
                     <div className="text-2xl text-primary">{docData.total_images}</div>
                   </div>
@@ -349,7 +349,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
           {/* Page Navigation - Only for PDF tab */}
           {activeTab === 'original' && docData.total_pages > 1 && (
             <motion.div
-              className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-[rgba(0,212,255,0.15)]"
+              className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-[rgba(20,184,166,0.1)]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -359,13 +359,13 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 disabled={currentPage === 1}
                 whileHover={{ scale: currentPage === 1 ? 1 : 1.05 }}
                 whileTap={{ scale: currentPage === 1 ? 1 : 0.95 }}
-                className="px-4 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-foreground"
+                className="px-4 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-foreground"
               >
                 <ChevronLeft size={16} />
                 上一页
               </motion.button>
 
-              <span className="text-muted-foreground px-4 py-2 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)]">
+              <span className="text-muted-foreground px-4 py-2 bg-card border border-border rounded-xl border border-[rgba(20,184,166,0.15)]">
                 第 <span className="text-primary">{currentPage}</span> / {docData.total_pages} 页
               </span>
 
@@ -374,7 +374,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 disabled={currentPage === docData.total_pages}
                 whileHover={{ scale: currentPage === docData.total_pages ? 1 : 1.05 }}
                 whileTap={{ scale: currentPage === docData.total_pages ? 1 : 0.95 }}
-                className="px-4 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-foreground"
+                className="px-4 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-foreground"
               >
                 下一页
                 <ChevronRight size={16} />

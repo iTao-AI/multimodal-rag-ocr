@@ -73,7 +73,7 @@ export function Toast({
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="fixed top-8 left-1/2 z-50 max-w-md"
         >
-          <div className={`glass gradient-border rounded-xl p-4 flex items-center gap-4 border-2 ${getBorderColor()} shadow-[0_0_30px_rgba(0,212,255,0.3)] relative overflow-hidden`}>
+          <div className={`bg-card/95 backdrop-blur-xl rounded-xl p-4 flex items-center gap-4 border-2 ${getBorderColor()} relative overflow-hidden`}>
             {/* Background glow */}
             <div className="absolute inset-0 opacity-10">
               <div className={`absolute inset-0 bg-gradient-to-r ${getGradient()} blur-xl`} />

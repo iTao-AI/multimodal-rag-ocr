@@ -457,7 +457,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
           className="relative z-10 w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-[#e5eaf0]">
+          <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
                 <Upload size={20} className="text-white" />
@@ -650,7 +650,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
                                 <span>上传中</span>
                                 <span>{progress}%</span>
                               </div>
-                              <div className="w-full h-1.5 bg-[#e5e7eb] rounded-full overflow-hidden">
+                              <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                                 <motion.div
                                   className="h-full bg-primary rounded-full"
                                   initial={{ width: 0 }}
@@ -813,7 +813,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
 
               {/* Warning */}
               {!selectedKB && files.length > 0 && (
-                <div className="flex items-center gap-2 p-3 rounded-md border border-warning/30 bg-[#fffbeb]">
+                <div className="flex items-center gap-2 p-3 rounded-md border border-warning/30 bg-warning/10">
                   <AlertCircle size={16} className="text-warning" />
                   <span className="text-sm text-warning">请先选择一个知识库</span>
                 </div>
@@ -822,7 +822,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-[#e5eaf0] bg-secondary">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-secondary">
             <motion.button
               onClick={onClose}
               disabled={uploading}
@@ -844,7 +844,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
               className={`px-6 py-3 rounded-md transition-all relative overflow-hidden group flex items-center gap-2 ${
                 selectedKB && files.length > 0 && !uploading
                   ? 'bg-primary text-white hover:bg-primary/90'
-                  : 'bg-[#e2e8f0] text-muted-foreground cursor-not-allowed'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
             >
               {selectedKB && files.length > 0 && !uploading && (

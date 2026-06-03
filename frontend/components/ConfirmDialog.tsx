@@ -60,7 +60,7 @@ export function ConfirmDialog({
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="bg-card border border-border rounded-2xl p-8 w-full max-w-md mx-4 relative overflow-hidden"
         >
-          {/* Background shimmer effect */}
+          {/* Background effect */}
           <div className="absolute inset-0 opacity-5">
             <div className={`absolute inset-0 bg-gradient-to-br ${getGradient()} blur-3xl`} />
           </div>
@@ -101,9 +101,9 @@ export function ConfirmDialog({
                 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`flex-1 px-6 py-3 bg-gradient-to-r ${getGradient()} text-primary-foreground rounded-xl hover:shadow-[0_0_20px_rgba(0,212,255,0.5)] transition-all relative overflow-hidden group`}
+                className={`flex-1 px-6 py-3 bg-gradient-to-r ${getGradient()} text-primary-foreground rounded-xl hover:shadow-[0_0_15px_rgba(20,184,166,0.15)] transition-all relative overflow-hidden group`}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 shimmer" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20" />
                 <span className="relative z-10">{confirmText}</span>
               </motion.button>
             </div>

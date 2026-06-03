@@ -42,7 +42,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
   // 从Milvus API获取知识库列表
   useEffect(() => {
     fetchKnowledgeBases();
-  }, []);  // ✅ 添加 isV2 依赖，版本切换时重新获取
+  }, []);
 
   const fetchKnowledgeBases = async () => {
     setLoading(true);
@@ -99,10 +99,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
     }
 
     try {
-      // ✅ V2模式：自动添加 _v2 后缀
-      const actualKbName = newKbName;
-      
-      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/create?display_name=${encodeURIComponent(actualKbName)}`, {
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/create?display_name=${encodeURIComponent(newKbName)}`, {
         method: 'POST',
       });
 
@@ -190,14 +187,14 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
             <span className="text-muted-foreground text-sm">总计:</span>
             <span className="text-foreground font-medium">{knowledgeBases.length} 个知识库</span>
           </div>
-          <div className="w-px h-4 bg-[#dbe3ea]" />
+          <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground text-sm">文档:</span>
             <span className="text-primary font-medium">
               {knowledgeBases.reduce((sum, kb) => sum + kb.documents, 0)} 个
             </span>
           </div>
-          <div className="w-px h-4 bg-[#dbe3ea]" />
+          <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground text-sm">Chunks:</span>
             <span className="text-primary font-medium">
@@ -277,7 +274,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
                     <span>存储使用</span>
                     <span className="text-primary">{kb.storageUsed}%</span>
                   </div>
-                  <div className="h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${kb.storageUsed}%` }}
@@ -305,7 +302,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2.5 border border-[#ef4444] text-destructive rounded-md hover:bg-[#fef2f2] transition-colors"
+                  className="px-4 py-2.5 border border-[#ef4444] text-destructive rounded-md hover:bg-destructive/10 transition-colors"
                 >
                   <Trash2 size={18} />
                 </motion.button>
@@ -356,7 +353,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex-1 rounded-md border border-border bg-card px-6 py-3 font-medium text-muted-foreground transition-colors hover:bg-[#f1f5f9]"
+                  className="flex-1 rounded-md border border-border bg-card px-6 py-3 font-medium text-muted-foreground transition-colors hover:bg-secondary"
                 >
                   取消
                 </motion.button>

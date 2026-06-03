@@ -65,7 +65,7 @@ export const getAllExtractionMethods = (): ExtractionMethod[] => {
 
 /** 返回全部提取方法（向后兼容旧调用方，无参数） */
 export const getExtractionMethods = (): ExtractionMethod[] => {
-  return ALL_EXTRACTION_METHODS;
+  return getAllExtractionMethods();
 };
 
 /** 根据方法 ID 返回正确上传端点 */

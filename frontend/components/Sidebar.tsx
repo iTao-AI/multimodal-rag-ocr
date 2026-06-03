@@ -84,7 +84,7 @@ export function Sidebar({ activeView, onNavigate, isOpen, onToggle }: SidebarPro
         </div>
         {navContent}
         <div className="px-5 py-4 border-t border-border">
-          <p className="text-[11px] text-muted-foreground">RAG OCR v2.0</p>
+          <p className="text-[11px] text-muted-foreground">RAG OCR</p>
         </div>
       </div>
     </>

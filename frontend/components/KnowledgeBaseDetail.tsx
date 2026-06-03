@@ -183,17 +183,17 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
             <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-2xl shadow-lg">
               📘
             </div>
-            <h2 className="text-gradient">{kbInfo.collection_name}</h2>
+            <h2 className="text-primary">{kbInfo.collection_name}</h2>
           </div>
         </div>
 
         <motion.button
           onClick={() => setShowUploadDialog(true)}
-          className="px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all flex items-center gap-2 relative overflow-hidden group"
+          className="px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] transition-all flex items-center gap-2 relative overflow-hidden group"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 shimmer" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20" />
           <Upload size={18} className="relative z-10" />
           <span className="relative z-10">上传文档</span>
         </motion.button>
@@ -214,13 +214,13 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <span className="px-4 py-2 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)] text-foreground">
+        <span className="px-4 py-2 bg-card border border-border rounded-xl border border-[rgba(20,184,166,0.15)] text-foreground">
           {kbInfo.total_documents}个文档
         </span>
         <span className="px-4 py-2 bg-card border border-border rounded-xl border border-success/20 text-success">
           {kbInfo.total_chunks} chunks
         </span>
-        <span className="px-4 py-2 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
+        <span className="px-4 py-2 bg-card border border-border rounded-xl border border-[rgba(20,184,166,0.15)] text-muted-foreground">
           最后更新: {getRelativeTime(kbInfo.last_updated)}
         </span>
       </motion.div>
@@ -239,12 +239,12 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
             placeholder="搜索文档..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground transition-all"
+            className="w-full h-12 pl-11 pr-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground transition-all"
           />
         </div>
 
         <motion.button
-          className="px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all flex items-center gap-2 text-foreground"
+          className="px-4 py-3 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] transition-all flex items-center gap-2 text-foreground"
           whileHover={{ scale: 1.05 }}
         >
           按时间
@@ -252,7 +252,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
         </motion.button>
 
         <motion.button
-          className="px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all flex items-center gap-2 text-foreground"
+          className="px-4 py-3 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] transition-all flex items-center gap-2 text-foreground"
           whileHover={{ scale: 1.05 }}
         >
           按大小
@@ -282,14 +282,14 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
               whileHover={{ y: -2 }}
               className="bg-card border border-border rounded-xl p-5 hover:bg-secondary transition-all group relative overflow-hidden"
             >
-              {/* Hover shimmer */}
+              {/* Hover */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(0,212,255,0.1)] to-transparent shimmer" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(20,184,166,0.08)] to-transparent" />
               </div>
 
               <div className="flex items-center gap-4 relative z-10">
                 {/* File Icon */}
-                <div className="w-14 h-14 bg-card border border-border rounded-xl flex items-center justify-center text-3xl flex-shrink-0 border border-[rgba(0,212,255,0.2)] group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 bg-card border border-border rounded-xl flex items-center justify-center text-3xl flex-shrink-0 border border-[rgba(20,184,166,0.15)] group-hover:scale-110 transition-transform">
                   {getFileIcon(doc.filename)}
                 </div>
 
@@ -299,7 +299,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
                     {doc.filename}
                   </div>
                   <div className="text-muted-foreground text-sm flex items-center gap-3">
-                    <span className="px-2 py-1 bg-card border border-border rounded-lg border border-[rgba(0,212,255,0.1)]">
+                    <span className="px-2 py-1 bg-card border border-border rounded-lg border border-[rgba(20,184,166,0.08)]">
                       {doc.chunks} chunks
                     </span>
                     <span>上传于 {formatDate(doc.created_at)}</span>

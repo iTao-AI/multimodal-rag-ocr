@@ -73,7 +73,7 @@ export function RetrievalTest() {
     let highlighted = text;
     keywords.forEach((keyword) => {
       const regex = new RegExp(`(${keyword})`, 'gi');
-      highlighted = highlighted.replace(regex, '<mark class="bg-[rgba(0,212,255,0.3)] text-primary px-1 rounded">$1</mark>');
+      highlighted = highlighted.replace(regex, '<mark class="bg-[rgba(20,184,166,0.2)] text-primary px-1 rounded">$1</mark>');
     });
     return highlighted;
   };
@@ -93,7 +93,7 @@ export function RetrievalTest() {
             value={collectionName}
             onChange={(e) => setCollectionName(e.target.value)}
             placeholder="例如: my_knowledge_base"
-            className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder-muted-foreground transition-all duration-300"
+            className="w-full px-4 py-3 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder-muted-foreground transition-all duration-300"
           />
         </div>
         <div className="flex gap-4">
@@ -102,17 +102,17 @@ export function RetrievalTest() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="💬 输入测试问题... 例如: 'RAG系统的主要用途是什么？'"
-              className="w-full min-h-[100px] px-5 py-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none text-foreground placeholder-muted-foreground transition-all duration-300"
+              className="w-full min-h-[100px] px-5 py-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none text-foreground placeholder-muted-foreground transition-all duration-300"
             />
           </div>
           <motion.button
             onClick={handleSearch}
             disabled={searching}
-            className="w-40 h-12 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all flex items-center justify-center gap-2 self-end relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-40 h-12 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] transition-all flex items-center justify-center gap-2 self-end relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 shimmer" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20" />
             {searching ? <Loader2 size={20} className="animate-spin relative z-10" /> : <Search size={20} className="relative z-10" />}
             <span className="relative z-10">{searching ? '检索中...' : '检索'}</span>
           </motion.button>
@@ -138,7 +138,7 @@ export function RetrievalTest() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-muted-foreground">Top K</label>
-              <span className="text-primary px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{topK[0]}</span>
+              <span className="text-primary px-3 py-1 rounded-lg bg-[rgba(20,184,166,0.08)] border border-[rgba(20,184,166,0.15)]">{topK[0]}</span>
             </div>
             <Slider
               value={topK}
@@ -160,7 +160,7 @@ export function RetrievalTest() {
                 min={0}
                 max={1}
                 step={0.05}
-                className="w-24 px-3 py-1 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                className="w-24 px-3 py-1 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
               />
             </div>
           </div>
@@ -174,7 +174,7 @@ export function RetrievalTest() {
                 type="checkbox"
                 checked={enableRerank}
                 onChange={(e) => setEnableRerank(e.target.checked)}
-                className="w-5 h-5 rounded border-[rgba(0,212,255,0.3)] text-primary focus:ring-2 focus:ring-primary bg-[rgba(15,18,53,0.6)] cursor-pointer"
+                className="w-5 h-5 rounded border-[rgba(20,184,166,0.2)] text-primary focus:ring-2 focus:ring-primary bg-secondary cursor-pointer"
               />
             </div>
             <span className="text-foreground group-hover:text-primary transition-colors">启用Rerank</span>
@@ -197,12 +197,12 @@ export function RetrievalTest() {
                 whileTap={{ scale: 0.95 }}
                 className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 relative overflow-hidden group ${
                   searchMode === mode.id
-                    ? 'border-primary bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
-                    : 'border-[rgba(0,212,255,0.2)] bg-card border border-border hover:border-[rgba(0,212,255,0.4)]'
+                    ? 'border-primary bg-[rgba(20,184,166,0.08)] shadow-[0_0_15px_rgba(20,184,166,0.15)]'
+                    : 'border-[rgba(20,184,166,0.15)] bg-card border border-border hover:border-[rgba(20,184,166,0.25)]'
                 }`}
               >
                 {searchMode === mode.id && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(0,212,255,0.2)] to-transparent shimmer" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(20,184,166,0.15)] to-transparent" />
                 )}
                 <span className="text-2xl relative z-10">{mode.icon}</span>
                 <span className={`relative z-10 ${searchMode === mode.id ? 'text-primary' : 'text-foreground'}`}>
@@ -227,7 +227,7 @@ export function RetrievalTest() {
             <span className="text-2xl">📊</span>
             检索结果
           </h3>
-          <span className="text-muted-foreground px-4 py-2 rounded-lg bg-card border border-border border border-[rgba(0,212,255,0.2)]">
+          <span className="text-muted-foreground px-4 py-2 rounded-lg bg-card border border-border border border-[rgba(20,184,166,0.15)]">
             (共{results.length}个)
           </span>
         </div>
@@ -246,11 +246,11 @@ export function RetrievalTest() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + index * 0.1 }}
               whileHover={{ y: -2 }}
-              className="bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl p-6 hover:border-[rgba(0,212,255,0.4)] hover:shadow-[0_0_20px_rgba(0,212,255,0.2)] transition-all relative overflow-hidden group"
+              className="bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl p-6 hover:border-[rgba(20,184,166,0.25)] hover:shadow-[0_0_20px_rgba(20,184,166,0.15)] transition-all relative overflow-hidden group"
             >
               {/* Hover effect */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(0,212,255,0.05)] to-transparent shimmer" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(20,184,166,0.04)] to-transparent" />
               </div>
 
               {/* Rank Badge */}
@@ -263,14 +263,14 @@ export function RetrievalTest() {
                 <div className="mb-4 space-y-3">
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-muted-foreground w-20">相似度:</span>
-                    <div className="flex-1 h-2.5 bg-[rgba(15,18,53,0.8)] rounded-full overflow-hidden border border-[rgba(0,212,255,0.2)]">
+                    <div className="flex-1 h-2.5 bg-secondary/80 rounded-full overflow-hidden border border-[rgba(20,184,166,0.15)]">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${result.similarity * 100}%` }}
                         transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
                         className="h-full bg-primary relative overflow-hidden"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 shimmer" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30" />
                       </motion.div>
                     </div>
                     <span className="text-sm text-primary w-14 text-right">{result.similarity}</span>
@@ -279,14 +279,14 @@ export function RetrievalTest() {
                   {enableRerank && result.rerank !== undefined && (
                     <div className="flex items-center gap-4">
                       <span className="text-sm text-muted-foreground w-20">重排序:</span>
-                      <div className="flex-1 h-2.5 bg-[rgba(15,18,53,0.8)] rounded-full overflow-hidden border border-success/20">
+                      <div className="flex-1 h-2.5 bg-secondary/80 rounded-full overflow-hidden border border-success/20">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${result.rerank * 100}%` }}
                           transition={{ duration: 1, delay: 0.6 + index * 0.1 }}
                           className="h-full bg-success relative overflow-hidden"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 shimmer" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30" />
                         </motion.div>
                       </div>
                       <span className="text-sm text-success w-14 text-right">{result.rerank}</span>
@@ -339,7 +339,7 @@ export function RetrievalTest() {
         transition={{ delay: 0.6 }}
       >
         <motion.button 
-          className="flex-1 px-6 py-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] hover:border-[rgba(0,212,255,0.4)] transition-all flex items-center justify-center gap-2 text-foreground group"
+          className="flex-1 px-6 py-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] hover:border-[rgba(20,184,166,0.25)] transition-all flex items-center justify-center gap-2 text-foreground group"
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -347,7 +347,7 @@ export function RetrievalTest() {
           <span>导出结果</span>
         </motion.button>
         <motion.button 
-          className="flex-1 px-6 py-4 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] hover:border-[rgba(0,212,255,0.4)] transition-all flex items-center justify-center gap-2 text-foreground group"
+          className="flex-1 px-6 py-4 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl hover:bg-[rgba(20,184,166,0.04)] hover:border-[rgba(20,184,166,0.25)] transition-all flex items-center justify-center gap-2 text-foreground group"
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -355,11 +355,11 @@ export function RetrievalTest() {
           <span>保存测试案例</span>
         </motion.button>
         <motion.button 
-          className="flex-1 px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all flex items-center justify-center gap-2 relative overflow-hidden group"
+          className="flex-1 px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] transition-all flex items-center justify-center gap-2 relative overflow-hidden group"
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 shimmer" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20" />
           <GitCompare size={18} className="relative z-10" />
           <span className="relative z-10">对比不同参数</span>
         </motion.button>

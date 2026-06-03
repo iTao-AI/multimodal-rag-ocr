@@ -86,15 +86,9 @@ export function Chat({}: ChatProps) {
         const kbResult = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/list`);
 
         if (kbResult.status === 'success' && kbResult.knowledge_bases.length > 0) {
-          // ✅ 根据版本过滤知识库
-          // V1模式：只显示不带 _v2 后缀的
-          // V2模式：只显示带 _v2 后缀的
-          const filteredKBs = kbResult.knowledge_bases;
-          
-          // ✅ V2模式：显示名称去掉 _v2 后缀
-          setKnowledgeBases(filteredKBs);
-          if (filteredKBs.length > 0) {
-            setSelectedKB(filteredKBs[0]);
+          setKnowledgeBases(kbResult.knowledge_bases);
+          if (kbResult.knowledge_bases.length > 0) {
+            setSelectedKB(kbResult.knowledge_bases[0]);
           }
         }
 
@@ -121,7 +115,7 @@ export function Chat({}: ChatProps) {
     };
 
     fetchData();
-  }, []);  // ✅ 添加 isV2 依赖，版本切换时重新加载
+  }, []);
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -346,8 +340,8 @@ export function Chat({}: ChatProps) {
   return (
     <div className="flex h-[calc(100vh-64px)]">
       {/* Left Sidebar */}
-      <div className="w-[280px] bg-card border border-border border-r border-[rgba(0,212,255,0.15)] flex flex-col">
-        <div className="p-4 border-b border-[rgba(0,212,255,0.15)] flex items-center justify-between">
+      <div className="w-[280px] bg-card border border-border border-r border-[rgba(20,184,166,0.1)] flex flex-col">
+        <div className="p-4 border-b border-[rgba(20,184,166,0.1)] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-primary" />
             <h3 className="text-foreground">对话历史</h3>
@@ -371,7 +365,7 @@ export function Chat({}: ChatProps) {
                 onClick={() => loadSession(session)}
                 className={`p-3 rounded-lg cursor-pointer transition-all group ${
                   currentSessionId === session.id
-                    ? 'bg-[rgba(0,212,255,0.15)] border border-[rgba(0,212,255,0.3)]'
+                    ? 'bg-[rgba(20,184,166,0.1)] border border-[rgba(20,184,166,0.2)]'
                     : 'bg-card border border-border hover:bg-primary/10'
                 }`}
                 whileHover={{ scale: 1.02 }}
@@ -413,9 +407,9 @@ export function Chat({}: ChatProps) {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-[rgba(10,14,39,0.3)]">
+      <div className="flex-1 flex flex-col bg-background/50">
         {/* Top Bar */}
-        <div className="h-16 bg-card border border-border border-b border-[rgba(0,212,255,0.15)] px-6 flex items-center justify-between">
+        <div className="h-16 bg-card border border-border border-b border-[rgba(20,184,166,0.1)] px-6 flex items-center justify-between">
           <div className="relative">
             <select
               value={selectedKB?.collection_id || ''}
@@ -423,7 +417,7 @@ export function Chat({}: ChatProps) {
                 const kb = knowledgeBases.find(k => k.collection_id === e.target.value);
                 setSelectedKB(kb || null);
               }}
-              className="px-4 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl text-foreground appearance-none pr-10 cursor-pointer hover:bg-primary/10 transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl text-foreground appearance-none pr-10 cursor-pointer hover:bg-primary/10 transition-all focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {knowledgeBases.length === 0 && <option value="">暂无知识库</option>}
               {knowledgeBases.map(kb => (
@@ -456,7 +450,7 @@ export function Chat({}: ChatProps) {
               <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mb-6">
                 <Bot size={48} className="text-primary-foreground" />
               </div>
-              <h2 className="text-2xl text-gradient mb-3">开始新对话</h2>
+              <h2 className="text-2xl text-primary mb-3">开始新对话</h2>
               <p className="text-muted-foreground max-w-md">
                 {selectedKB ? `已选择知识库「${selectedKB.display_name}」，现在可以向我提问了` : '请先选择一个知识库，然后开始对话'}
               </p>
@@ -476,11 +470,11 @@ export function Chat({}: ChatProps) {
                         <Bot size={22} className="text-primary-foreground" />
                       </motion.div>
                       <div className="flex-1 max-w-[70%]">
-                        <motion.div className="bg-card border border-border rounded-2xl p-5 shadow-lg border border-[rgba(0,212,255,0.2)]">
+                        <motion.div className="bg-card border border-border rounded-2xl p-5 shadow-lg border border-[rgba(20,184,166,0.15)]">
                           <div className="prose prose-invert max-w-none text-foreground">
                             <ReactMarkdown
                               components={{
-                                h1: ({node, ...props}) => <h1 className="text-xl text-gradient mb-3" {...props} />,
+                                h1: ({node, ...props}) => <h1 className="text-xl text-primary mb-3" {...props} />,
                                 h2: ({node, ...props}) => <h2 className="text-lg text-primary mb-2" {...props} />,
                                 h3: ({node, ...props}) => <h3 className="text-base text-primary mb-2" {...props} />,
                                 p: ({node, ...props}) => <p className="text-foreground mb-2 leading-relaxed" {...props} />,
@@ -490,25 +484,25 @@ export function Chat({}: ChatProps) {
                                 strong: ({node, ...props}) => <strong className="text-primary font-semibold" {...props} />,
                                 em: ({node, ...props}) => <em className="text-success italic" {...props} />,
                                 code: ({node, ...props}) => (
-                                  <code className="bg-[rgba(0,212,255,0.1)] text-success px-1.5 py-0.5 rounded text-sm" {...props} />
+                                  <code className="bg-[rgba(20,184,166,0.08)] text-success px-1.5 py-0.5 rounded text-sm" {...props} />
                                 ),
                                 pre: ({node, ...props}) => (
-                                  <pre className="bg-[rgba(0,212,255,0.1)] p-3 rounded-xl overflow-x-auto my-2" {...props} />
+                                  <pre className="bg-[rgba(20,184,166,0.08)] p-3 rounded-xl overflow-x-auto my-2" {...props} />
                                 ),
                                 blockquote: ({node, ...props}) => (
                                   <blockquote className="border-l-4 border-primary pl-4 py-2 my-2 text-muted-foreground italic" {...props} />
                                 ),
                                 table: ({node, ...props}) => (
-                                  <table className="w-full border border-[rgba(0,212,255,0.2)] rounded-lg my-2" {...props} />
+                                  <table className="w-full border border-[rgba(20,184,166,0.15)] rounded-lg my-2" {...props} />
                                 ),
                                 th: ({node, ...props}) => (
-                                  <th className="border border-[rgba(0,212,255,0.2)] px-3 py-2 bg-[rgba(0,212,255,0.1)] text-primary" {...props} />
+                                  <th className="border border-[rgba(20,184,166,0.15)] px-3 py-2 bg-[rgba(20,184,166,0.08)] text-primary" {...props} />
                                 ),
                                 td: ({node, ...props}) => (
-                                  <td className="border border-[rgba(0,212,255,0.2)] px-3 py-2 text-foreground" {...props} />
+                                  <td className="border border-[rgba(20,184,166,0.15)] px-3 py-2 text-foreground" {...props} />
                                 ),
                                 hr: ({node, ...props}) => (
-                                  <hr className="my-4 border-t border-[rgba(0,212,255,0.3)]" {...props} />
+                                  <hr className="my-4 border-t border-[rgba(20,184,166,0.2)]" {...props} />
                                 ),
                               }}
                             >
@@ -521,7 +515,7 @@ export function Chat({}: ChatProps) {
                           <div className="mt-3">
                             <motion.button
                               onClick={() => setExpandedCitation(expandedCitation === msg.id ? null : msg.id)}
-                              className="text-primary text-sm flex items-center gap-1 px-3 py-1.5 bg-card border border-border rounded-lg border border-[rgba(0,212,255,0.2)]"
+                              className="text-primary text-sm flex items-center gap-1 px-3 py-1.5 bg-card border border-border rounded-lg border border-[rgba(20,184,166,0.15)]"
                             >
                               📚 引用来源 [{msg.sources.length}个]
                               <ChevronDown size={14} className={`transition-transform ${expandedCitation === msg.id ? 'rotate-180' : ''}`} />
@@ -529,12 +523,12 @@ export function Chat({}: ChatProps) {
                             {expandedCitation === msg.id && (
                               <div className="mt-3 space-y-2">
                                 {msg.sources.map((source, idx) => (
-                                  <div key={idx} className="bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl p-4 text-sm">
+                                  <div key={idx} className="bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl p-4 text-sm">
                                     <div className="flex items-center gap-2 mb-2">
                                       <span className="text-foreground">📄 {source.filename}</span>
                                     </div>
                                     <div className="flex gap-2 mb-3">
-                                      <span className="px-2 py-1 bg-[rgba(0,212,255,0.1)] text-primary rounded-lg text-xs">
+                                      <span className="px-2 py-1 bg-[rgba(20,184,166,0.08)] text-primary rounded-lg text-xs">
                                         相似度: {source.score.toFixed(3)}
                                       </span>
                                     </div>
@@ -576,7 +570,7 @@ export function Chat({}: ChatProps) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="bg-card border border-border border-t border-[rgba(0,212,255,0.15)] overflow-hidden"
+              className="bg-card border border-border border-t border-[rgba(20,184,166,0.1)] overflow-hidden"
             >
               <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between mb-2">
@@ -592,7 +586,7 @@ export function Chat({}: ChatProps) {
                     <select
                       value={llmConfig.model_name}
                       onChange={(e) => setLLMConfig({...llmConfig, model_name: e.target.value})}
-                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       {availableModels.map(model => (
                         <option key={model.name} value={model.name}>
@@ -628,7 +622,7 @@ export function Chat({}: ChatProps) {
                       step="100"
                       value={llmConfig.max_tokens}
                       onChange={(e) => setLLMConfig({...llmConfig, max_tokens: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
 
@@ -639,7 +633,7 @@ export function Chat({}: ChatProps) {
                       value={llmConfig.api_key}
                       onChange={(e) => setLLMConfig({...llmConfig, api_key: e.target.value})}
                       placeholder="sk-xxxxxxxxxxxx"
-                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
@@ -653,7 +647,7 @@ export function Chat({}: ChatProps) {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="bg-card border border-border border-t border-[rgba(0,212,255,0.15)] p-4">
+        <div className="bg-card border border-border border-t border-[rgba(20,184,166,0.1)] p-4">
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <textarea
@@ -662,7 +656,7 @@ export function Chat({}: ChatProps) {
                 onKeyPress={handleKeyPress}
                 placeholder={selectedKB ? '💬 输入你的问题...' : '⚠️ 请先选择知识库'}
                 disabled={!selectedKB || isLoading}
-                className="w-full min-h-[56px] max-h-[200px] px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary resize-none text-foreground placeholder-muted-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full min-h-[56px] max-h-[200px] px-4 py-3 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary resize-none text-foreground placeholder-muted-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={1}
               />
               <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
