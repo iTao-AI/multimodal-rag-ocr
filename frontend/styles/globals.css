@@ -59,8 +59,6 @@
   --chart-5: #a855f7;
 
   /* Font */
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
 }
 
 .dark {
@@ -84,6 +82,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-info: #3b82f6;
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);
