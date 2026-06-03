@@ -27,26 +27,26 @@ export function Toast({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle size={24} className="text-[#00ff88]" />;
+        return <CheckCircle size={24} className="text-success" />;
       case 'error':
         return <XCircle size={24} className="text-[#ff3b5c]" />;
       case 'warning':
-        return <AlertTriangle size={24} className="text-[#ffb800]" />;
+        return <AlertTriangle size={24} className="text-warning" />;
       case 'info':
-        return <Info size={24} className="text-[#00d4ff]" />;
+        return <Info size={24} className="text-primary" />;
     }
   };
 
   const getGradient = () => {
     switch (type) {
       case 'success':
-        return 'from-[#00ff88] to-[#00d4a0]';
+        return 'from-success to-success';
       case 'error':
         return 'from-[#ff3b5c] to-[#ff1744]';
       case 'warning':
         return 'from-[#ffb800] to-[#ff8c00]';
       case 'info':
-        return 'from-[#00d4ff] to-[#0066ff]';
+        return 'from-primary to-primary';
     }
   };
 
@@ -59,7 +59,7 @@ export function Toast({
       case 'warning':
         return 'border-[#ffb800]';
       case 'info':
-        return 'border-[#00d4ff]';
+        return 'border-primary';
     }
   };
 
@@ -88,7 +88,7 @@ export function Toast({
               >
                 {getIcon()}
               </motion.div>
-              <p className="text-[#e8eaed] flex-1">{message}</p>
+              <p className="text-foreground flex-1">{message}</p>
             </div>
 
             {/* Progress bar */}

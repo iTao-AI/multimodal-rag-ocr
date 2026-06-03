@@ -77,18 +77,18 @@ export function Settings() {
                   transition={{ delay: index * 0.1 }}
                   className={`flex-1 px-6 py-4 transition-all relative flex items-center justify-center gap-2 group ${
                     activeTab === tab.id
-                      ? 'text-[#00d4ff]'
-                      : 'text-muted-foreground hover:text-[#e8eaed]'
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {activeTab === tab.id && (
                     <motion.div
                       layoutId="activeSettingsTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#00d4ff] to-[#0066ff]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
-                  <Icon size={18} className={activeTab === tab.id ? 'text-[#00d4ff]' : 'group-hover:text-[#00d4ff] transition-colors'} />
+                  <Icon size={18} className={activeTab === tab.id ? 'text-primary' : 'group-hover:text-primary transition-colors'} />
                   <span>{tab.label}</span>
                 </motion.button>
               );
@@ -109,16 +109,16 @@ export function Settings() {
               {/* Embedding Model */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-[rgba(0,212,255,0.15)]">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center">
-                    <span className="text-[#0a0e27]">🔤</span>
+                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                    <span className="text-primary-foreground">🔤</span>
                   </div>
-                  <h3 className="text-[#e8eaed]">Embedding模型</h3>
+                  <h3 className="text-foreground">Embedding模型</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-muted-foreground">提供商</label>
-                    <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                    <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                       <option>Jina AI</option>
                       <option>OpenAI</option>
                       <option>Cohere</option>
@@ -127,7 +127,7 @@ export function Settings() {
 
                   <div className="space-y-2">
                     <label className="text-muted-foreground">模型</label>
-                    <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                    <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                       <option>jina-embeddings-v4</option>
                       <option>jina-embeddings-v3</option>
                     </select>
@@ -140,7 +140,7 @@ export function Settings() {
                     type="text"
                     value="2048"
                     disabled
-                    className="w-full px-4 py-3 glass rounded-xl bg-[rgba(15,18,53,0.8)] text-muted-foreground border border-[rgba(0,212,255,0.1)]"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-xl bg-[rgba(15,18,53,0.8)] text-muted-foreground border border-[rgba(0,212,255,0.1)]"
                   />
                 </div>
 
@@ -151,11 +151,11 @@ export function Settings() {
                       <input
                         type={showApiKey ? 'text' : 'password'}
                         defaultValue="your-api-key"
-                        className="w-full px-4 py-3 pr-12 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                        className="w-full px-4 py-3 pr-12 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-[#00d4ff] transition-colors"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                       >
                         {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -164,14 +164,14 @@ export function Settings() {
                       onClick={() => setConnectionStatus('success')}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className="px-6 py-3 border border-[#00d4ff] text-[#00d4ff] rounded-xl hover:bg-[rgba(0,212,255,0.1)] transition-all"
+                      className="px-6 py-3 border border-primary text-primary rounded-xl hover:bg-primary/10 transition-all"
                     >
                       测试连接
                     </motion.button>
                   </div>
                   {connectionStatus === 'success' && (
                     <motion.div 
-                      className="flex items-center gap-2 text-[#00ff88] text-sm px-3 py-2 glass-strong rounded-lg border border-[rgba(0,255,136,0.2)]"
+                      className="flex items-center gap-2 text-success text-sm px-3 py-2 bg-card border border-border rounded-lg border border-success/20"
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
@@ -181,7 +181,7 @@ export function Settings() {
                   )}
                   {connectionStatus === 'error' && (
                     <motion.div 
-                      className="flex items-center gap-2 text-[#ff3b5c] text-sm px-3 py-2 glass-strong rounded-lg border border-[rgba(255,59,92,0.2)]"
+                      className="flex items-center gap-2 text-[#ff3b5c] text-sm px-3 py-2 bg-card border border-border rounded-lg border border-[rgba(255,59,92,0.2)]"
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
@@ -195,16 +195,16 @@ export function Settings() {
               {/* LLM Model */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-[rgba(0,212,255,0.15)]">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-chart-5 to-chart-5 flex items-center justify-center">
                     <span className="text-white">🤖</span>
                   </div>
-                  <h3 className="text-[#e8eaed]">LLM模型</h3>
+                  <h3 className="text-foreground">LLM模型</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-muted-foreground">提供商</label>
-                    <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                    <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                       <option>OpenAI</option>
                       <option>Claude</option>
                       <option>Qwen</option>
@@ -213,7 +213,7 @@ export function Settings() {
 
                   <div className="space-y-2">
                     <label className="text-muted-foreground">模型</label>
-                    <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                    <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                       <option>gpt-4-turbo</option>
                       <option>gpt-3.5-turbo</option>
                     </select>
@@ -224,7 +224,7 @@ export function Settings() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-muted-foreground">Temperature</label>
-                      <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{temperature[0]}</span>
+                      <span className="text-primary px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{temperature[0]}</span>
                     </div>
                     <Slider
                       value={temperature}
@@ -239,7 +239,7 @@ export function Settings() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-muted-foreground">Max Tokens</label>
-                      <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{maxTokens[0]}</span>
+                      <span className="text-primary px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{maxTokens[0]}</span>
                     </div>
                     <Slider
                       value={maxTokens}
@@ -256,16 +256,16 @@ export function Settings() {
               {/* Rerank Model */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-[rgba(0,212,255,0.15)]">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00ff88] to-[#00d4a0] flex items-center justify-center">
-                    <span className="text-[#0a0e27]">⚡</span>
+                  <div className="w-8 h-8 rounded-lg bg-success flex items-center justify-center">
+                    <span className="text-primary-foreground">⚡</span>
                   </div>
-                  <h3 className="text-[#e8eaed]">Rerank模型</h3>
+                  <h3 className="text-foreground">Rerank模型</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-muted-foreground">提供商</label>
-                    <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                    <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                       <option>Cohere</option>
                       <option>Jina</option>
                     </select>
@@ -273,16 +273,16 @@ export function Settings() {
 
                   <div className="space-y-2">
                     <label className="text-muted-foreground">模型</label>
-                    <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                    <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                       <option>rerank-v3</option>
                       <option>rerank-v2</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 glass rounded-xl border border-[rgba(0,212,255,0.2)]">
+                <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)]">
                   <Switch checked={enableRerank} onCheckedChange={setEnableRerank} />
-                  <label className="text-[#e8eaed]">启用重排序</label>
+                  <label className="text-foreground">启用重排序</label>
                 </div>
               </div>
             </motion.div>
@@ -298,7 +298,7 @@ export function Settings() {
             >
               {/* Default Mode */}
               <div className="space-y-4">
-                <h3 className="text-[#e8eaed]">默认提取模式</h3>
+                <h3 className="text-foreground">默认提取模式</h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <motion.button
@@ -307,18 +307,18 @@ export function Settings() {
                     whileTap={{ scale: 0.98 }}
                     className={`p-6 rounded-2xl border-2 transition-all text-left relative overflow-hidden group ${
                       extractionMode === 'fast'
-                        ? 'border-[#00d4ff] bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
-                        : 'border-[rgba(0,212,255,0.2)] glass hover:border-[rgba(0,212,255,0.4)]'
+                        ? 'border-primary bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
+                        : 'border-[rgba(0,212,255,0.2)] bg-card border border-border hover:border-[rgba(0,212,255,0.4)]'
                     }`}
                   >
                     {extractionMode === 'fast' && (
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(0,212,255,0.1)] to-transparent shimmer" />
                     )}
                     <div className="flex items-center gap-3 mb-3 relative z-10">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${extractionMode === 'fast' ? 'border-[#00d4ff]' : 'border-[#94a3b8]'}`}>
-                        {extractionMode === 'fast' && <div className="w-3 h-3 rounded-full bg-[#00d4ff]" />}
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${extractionMode === 'fast' ? 'border-primary' : 'border-[var(--muted-foreground)]'}`}>
+                        {extractionMode === 'fast' && <div className="w-3 h-3 rounded-full bg-primary" />}
                       </div>
-                      <span className={`text-lg ${extractionMode === 'fast' ? 'text-[#00d4ff]' : 'text-[#e8eaed]'}`}>
+                      <span className={`text-lg ${extractionMode === 'fast' ? 'text-primary' : 'text-foreground'}`}>
                         快速模式(PyMuPDF4LLM)
                       </span>
                     </div>
@@ -333,18 +333,18 @@ export function Settings() {
                     whileTap={{ scale: 0.98 }}
                     className={`p-6 rounded-2xl border-2 transition-all text-left relative overflow-hidden group ${
                       extractionMode === 'vlm'
-                        ? 'border-[#00d4ff] bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
-                        : 'border-[rgba(0,212,255,0.2)] glass hover:border-[rgba(0,212,255,0.4)]'
+                        ? 'border-primary bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
+                        : 'border-[rgba(0,212,255,0.2)] bg-card border border-border hover:border-[rgba(0,212,255,0.4)]'
                     }`}
                   >
                     {extractionMode === 'vlm' && (
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(0,212,255,0.1)] to-transparent shimmer" />
                     )}
                     <div className="flex items-center gap-3 mb-3 relative z-10">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${extractionMode === 'vlm' ? 'border-[#00d4ff]' : 'border-[#94a3b8]'}`}>
-                        {extractionMode === 'vlm' && <div className="w-3 h-3 rounded-full bg-[#00d4ff]" />}
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${extractionMode === 'vlm' ? 'border-primary' : 'border-[var(--muted-foreground)]'}`}>
+                        {extractionMode === 'vlm' && <div className="w-3 h-3 rounded-full bg-primary" />}
                       </div>
-                      <span className={`text-lg ${extractionMode === 'vlm' ? 'text-[#00d4ff]' : 'text-[#e8eaed]'}`}>
+                      <span className={`text-lg ${extractionMode === 'vlm' ? 'text-primary' : 'text-foreground'}`}>
                         精确模式(VLM)
                       </span>
                     </div>
@@ -357,7 +357,7 @@ export function Settings() {
 
               {/* Chunking Parameters */}
               <div className="space-y-4">
-                <h3 className="text-[#e8eaed]">切分参数</h3>
+                <h3 className="text-foreground">切分参数</h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -367,9 +367,9 @@ export function Settings() {
                         type="number"
                         value={chunkSize}
                         onChange={(e) => setChunkSize(parseInt(e.target.value))}
-                        className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                        className="flex-1 px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
+                      <span className="px-4 py-3 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         tokens
                       </span>
                     </div>
@@ -382,9 +382,9 @@ export function Settings() {
                         type="number"
                         value={overlap}
                         onChange={(e) => setOverlap(parseInt(e.target.value))}
-                        className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                        className="flex-1 px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
+                      <span className="px-4 py-3 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         tokens
                       </span>
                     </div>
@@ -396,9 +396,9 @@ export function Settings() {
                       <input
                         type="number"
                         defaultValue={2}
-                        className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                        className="flex-1 px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
+                      <span className="px-4 py-3 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         页
                       </span>
                     </div>
@@ -410,9 +410,9 @@ export function Settings() {
                       <input
                         type="number"
                         defaultValue={100}
-                        className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                        className="flex-1 px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
+                      <span className="px-4 py-3 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         tokens
                       </span>
                     </div>
@@ -421,7 +421,7 @@ export function Settings() {
 
                 <div className="space-y-2">
                   <label className="text-muted-foreground">切分方法</label>
-                  <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                  <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                     <option>递归字符分割</option>
                     <option>固定大小分割</option>
                     <option>语义分割</option>
@@ -441,13 +441,13 @@ export function Settings() {
             >
               {/* Default Parameters */}
               <div className="space-y-4">
-                <h3 className="text-[#e8eaed]">默认检索参数</h3>
+                <h3 className="text-foreground">默认检索参数</h3>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-muted-foreground">Top K</label>
-                      <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{topK[0]}</span>
+                      <span className="text-primary px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{topK[0]}</span>
                     </div>
                     <Slider
                       value={topK}
@@ -462,7 +462,7 @@ export function Settings() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-muted-foreground">相似度阈值</label>
-                      <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{similarityThreshold[0]}</span>
+                      <span className="text-primary px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{similarityThreshold[0]}</span>
                     </div>
                     <Slider
                       value={similarityThreshold}
@@ -475,9 +475,9 @@ export function Settings() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 glass rounded-xl border border-[rgba(0,212,255,0.2)]">
+                <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl border border-[rgba(0,212,255,0.2)]">
                   <Switch checked={enableRerank} onCheckedChange={setEnableRerank} />
-                  <label className="text-[#e8eaed]">启用重排序</label>
+                  <label className="text-foreground">启用重排序</label>
                 </div>
 
                 {enableRerank && (
@@ -490,7 +490,7 @@ export function Settings() {
                     <input
                       type="number"
                       defaultValue={3}
-                      className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                      className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                     />
                   </motion.div>
                 )}
@@ -498,7 +498,7 @@ export function Settings() {
 
               {/* Search Mode */}
               <div className="space-y-4">
-                <h3 className="text-[#e8eaed]">搜索模式</h3>
+                <h3 className="text-foreground">搜索模式</h3>
 
                 <div className="grid grid-cols-3 gap-4">
                   {[
@@ -513,8 +513,8 @@ export function Settings() {
                       whileTap={{ scale: 0.95 }}
                       className={`p-6 rounded-2xl border-2 transition-all text-center relative overflow-hidden group ${
                         searchMode === mode.id
-                          ? 'border-[#00d4ff] bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
-                          : 'border-[rgba(0,212,255,0.2)] glass hover:border-[rgba(0,212,255,0.4)]'
+                          ? 'border-primary bg-[rgba(0,212,255,0.1)] shadow-[0_0_20px_rgba(0,212,255,0.3)]'
+                          : 'border-[rgba(0,212,255,0.2)] bg-card border border-border hover:border-[rgba(0,212,255,0.4)]'
                       }`}
                     >
                       {searchMode === mode.id && (
@@ -522,7 +522,7 @@ export function Settings() {
                       )}
                       <div className="relative z-10">
                         <div className="text-3xl mb-3">{mode.icon}</div>
-                        <div className={`mb-2 ${searchMode === mode.id ? 'text-[#00d4ff]' : 'text-[#e8eaed]'}`}>
+                        <div className={`mb-2 ${searchMode === mode.id ? 'text-primary' : 'text-foreground'}`}>
                           {mode.label}
                         </div>
                         <div className="text-xs text-muted-foreground">{mode.desc}</div>
@@ -544,7 +544,7 @@ export function Settings() {
             >
               <div className="space-y-2">
                 <label className="text-muted-foreground">语言</label>
-                <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                <select className="w-full px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                   <option>🇨🇳 简体中文</option>
                   <option>🇺🇸 English</option>
                 </select>
@@ -556,9 +556,9 @@ export function Settings() {
                   <input
                     type="number"
                     defaultValue={100}
-                    className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                    className="flex-1 px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                   />
-                  <select className="px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
+                  <select className="px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground bg-[rgba(15,18,53,0.6)]">
                     <option>MB</option>
                     <option>GB</option>
                   </select>
@@ -573,7 +573,7 @@ export function Settings() {
                       key={type}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className="px-4 py-2 bg-[rgba(0,212,255,0.1)] text-[#00d4ff] rounded-xl hover:bg-[rgba(0,212,255,0.2)] transition-all border border-[rgba(0,212,255,0.2)]"
+                      className="px-4 py-2 bg-[rgba(0,212,255,0.1)] text-primary rounded-xl hover:bg-primary/20 transition-all border border-[rgba(0,212,255,0.2)]"
                     >
                       {type}
                     </motion.button>
@@ -587,10 +587,10 @@ export function Settings() {
                   <input
                     type="text"
                     defaultValue="/uploads/documents"
-                    className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
+                    className="flex-1 px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                   />
                   <motion.button 
-                    className="px-6 py-3 glass border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all text-[#e8eaed]"
+                    className="px-6 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all text-foreground"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -612,7 +612,7 @@ export function Settings() {
       >
         <motion.button
           onClick={handleResetSettings}
-          className="text-[#00d4ff] hover:underline"
+          className="text-primary hover:underline"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -622,7 +622,7 @@ export function Settings() {
         <div className="flex gap-3">
           <motion.button
             onClick={handleSaveSettings}
-            className="px-6 py-3 glass border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all text-[#e8eaed]"
+            className="px-6 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl hover:bg-[rgba(0,212,255,0.05)] transition-all text-foreground"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -630,7 +630,7 @@ export function Settings() {
           </motion.button>
           <motion.button
             onClick={handleSaveSettings}
-            className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all relative overflow-hidden group"
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-all relative overflow-hidden group"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

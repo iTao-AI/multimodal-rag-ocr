@@ -478,7 +478,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
               {/* Knowledge Base Selection */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-[#334155] font-medium flex items-center gap-2">
+                  <label className="text-muted-foreground font-medium flex items-center gap-2">
                     <FileText size={16} />
                     选择知识库
                   </label>
@@ -552,7 +552,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
                           uploading
                             ? 'border-border cursor-not-allowed opacity-50'
                             : selectedKB === kb.collection_id
-                              ? 'border-[#0f766e] bg-secondary'
+                              ? 'border-[var(--primary)] bg-secondary'
                               : 'border-border bg-card hover:border-primary hover:bg-secondary'
                         }`}
                       >
@@ -575,7 +575,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
 
               {/* File Upload Area */}
               <div className="space-y-3">
-                <label className="text-[#334155] font-medium">选择文件</label>
+                <label className="text-muted-foreground font-medium">选择文件</label>
                 <div
                   onDrop={uploading ? undefined : handleDrop}
                   onDragOver={uploading ? (e) => e.preventDefault() : (e) => e.preventDefault()}
@@ -619,10 +619,10 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
                                 <Loader2 size={16} className="text-primary animate-spin flex-shrink-0" />
                               )}
                               {status === 'processing' && (
-                                <Loader2 size={16} className="text-[#ffb800] animate-spin flex-shrink-0" />
+                                <Loader2 size={16} className="text-warning animate-spin flex-shrink-0" />
                               )}
                               {status === 'done' && (
-                                <CheckCircle size={16} className="text-[#00ff88] flex-shrink-0" />
+                                <CheckCircle size={16} className="text-success flex-shrink-0" />
                               )}
                               {status === 'error' && (
                                 <AlertCircle size={16} className="text-[#ff3b5c] flex-shrink-0" />
@@ -663,7 +663,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
 
                           {/* Processing Spinner */}
                           {status === 'processing' && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-[#ffb800]">
+                            <div className="mt-2 flex items-center gap-2 text-sm text-warning">
                               <Loader2 size={12} className="animate-spin" />
                               <span>正在处理中...</span>
                             </div>
@@ -671,7 +671,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
 
                           {/* Done with chunk count */}
                           {status === 'done' && (
-                            <div className="mt-2 text-xs text-[#00ff88]">
+                            <div className="mt-2 text-xs text-success">
                               {fileState?.chunkCount
                                 ? `处理完成，已切分为 ${fileState.chunkCount} 个块`
                                 : '处理完成'}
@@ -712,7 +712,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
                   >
                     {/* Extraction Mode */}
                     <div className="space-y-3">
-                      <label className="text-[#334155] font-medium">
+                      <label className="text-muted-foreground font-medium">
                         提取模式
                                               </label>
                       <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3`}>
@@ -722,7 +722,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
                             onClick={() => setConfig({ ...config, extractionMode: method.id })}
                             className={`p-4 rounded-md border transition-all text-left ${
                               config.extractionMode === method.id
-                                ? 'border-[#0f766e] bg-secondary'
+                                ? 'border-[var(--primary)] bg-secondary'
                                 : 'border-border bg-card hover:border-primary hover:bg-secondary'
                             }`}
                           >
@@ -741,7 +741,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
 
                     {/* Chunking Parameters */}
                     <div className="space-y-3">
-                      <label className="text-[#334155] font-medium">切分参数</label>
+                      <label className="text-muted-foreground font-medium">切分参数</label>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm text-muted-foreground">Chunk Size</label>
@@ -814,8 +814,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
               {/* Warning */}
               {!selectedKB && files.length > 0 && (
                 <div className="flex items-center gap-2 p-3 rounded-md border border-warning/30 bg-[#fffbeb]">
-                  <AlertCircle size={16} className="text-[#ffb800]" />
-                  <span className="text-sm text-[#ffb800]">请先选择一个知识库</span>
+                  <AlertCircle size={16} className="text-warning" />
+                  <span className="text-sm text-warning">请先选择一个知识库</span>
                 </div>
               )}
             </div>
@@ -831,7 +831,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
               className={`px-6 py-3 rounded-md border transition-all ${
                 uploading
                   ? 'border-border bg-card text-muted-foreground cursor-not-allowed'
-                  : 'border-border bg-card text-[#334155] hover:bg-secondary'
+                  : 'border-border bg-card text-muted-foreground hover:bg-secondary'
               }`}
             >
               {uploading ? '上传中不可取消' : '取消'}

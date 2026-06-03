@@ -346,19 +346,19 @@ export function Chat({}: ChatProps) {
   return (
     <div className="flex h-[calc(100vh-64px)]">
       {/* Left Sidebar */}
-      <div className="w-[280px] glass-strong border-r border-[rgba(0,212,255,0.15)] flex flex-col">
+      <div className="w-[280px] bg-card border border-border border-r border-[rgba(0,212,255,0.15)] flex flex-col">
         <div className="p-4 border-b border-[rgba(0,212,255,0.15)] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[#00d4ff]" />
-            <h3 className="text-[#e8eaed]">对话历史</h3>
+            <Sparkles size={18} className="text-primary" />
+            <h3 className="text-foreground">对话历史</h3>
           </div>
           <motion.button
             onClick={handleNewChat}
-            className="w-8 h-8 rounded-lg glass hover:bg-[rgba(0,212,255,0.1)] flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-lg bg-card border border-border hover:bg-primary/10 flex items-center justify-center transition-all"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <Plus size={18} className="text-[#00d4ff]" />
+            <Plus size={18} className="text-primary" />
           </motion.button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -372,7 +372,7 @@ export function Chat({}: ChatProps) {
                 className={`p-3 rounded-lg cursor-pointer transition-all group ${
                   currentSessionId === session.id
                     ? 'bg-[rgba(0,212,255,0.15)] border border-[rgba(0,212,255,0.3)]'
-                    : 'glass hover:bg-[rgba(0,212,255,0.1)]'
+                    : 'glass hover:bg-primary/10'
                 }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -380,8 +380,8 @@ export function Chat({}: ChatProps) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <MessageSquare size={14} className="text-[#00d4ff] flex-shrink-0" />
-                      <p className="text-[#e8eaed] text-sm font-medium truncate">
+                      <MessageSquare size={14} className="text-primary flex-shrink-0" />
+                      <p className="text-foreground text-sm font-medium truncate">
                         {session.title}
                       </p>
                     </div>
@@ -415,7 +415,7 @@ export function Chat({}: ChatProps) {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-[rgba(10,14,39,0.3)]">
         {/* Top Bar */}
-        <div className="h-16 glass border-b border-[rgba(0,212,255,0.15)] px-6 flex items-center justify-between">
+        <div className="h-16 bg-card border border-border border-b border-[rgba(0,212,255,0.15)] px-6 flex items-center justify-between">
           <div className="relative">
             <select
               value={selectedKB?.collection_id || ''}
@@ -423,7 +423,7 @@ export function Chat({}: ChatProps) {
                 const kb = knowledgeBases.find(k => k.collection_id === e.target.value);
                 setSelectedKB(kb || null);
               }}
-              className="px-4 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl text-[#e8eaed] appearance-none pr-10 cursor-pointer hover:bg-[rgba(0,212,255,0.1)] transition-all focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+              className="px-4 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl text-foreground appearance-none pr-10 cursor-pointer hover:bg-primary/10 transition-all focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {knowledgeBases.length === 0 && <option value="">暂无知识库</option>}
               {knowledgeBases.map(kb => (
@@ -432,7 +432,7 @@ export function Chat({}: ChatProps) {
                 </option>
               ))}
             </select>
-            <ChevronDown size={16} className="text-[#00d4ff] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={16} className="text-primary absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
           <div className="flex items-center gap-4">
             <div className="text-muted-foreground text-sm">
@@ -440,11 +440,11 @@ export function Chat({}: ChatProps) {
             </div>
             <motion.button
               onClick={() => setShowSettings(!showSettings)}
-              className="w-9 h-9 rounded-lg glass hover:bg-[rgba(0,212,255,0.1)] flex items-center justify-center transition-all"
+              className="w-9 h-9 rounded-lg bg-card border border-border hover:bg-primary/10 flex items-center justify-center transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Settings size={18} className={`${showSettings ? 'text-[#00d4ff]' : 'text-muted-foreground'} transition-colors`} />
+              <Settings size={18} className={`${showSettings ? 'text-primary' : 'text-muted-foreground'} transition-colors`} />
             </motion.button>
           </div>
         </div>
@@ -453,8 +453,8 @@ export function Chat({}: ChatProps) {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center mb-6 animate-pulse-glow">
-                <Bot size={48} className="text-[#0a0e27]" />
+              <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mb-6">
+                <Bot size={48} className="text-primary-foreground" />
               </div>
               <h2 className="text-2xl text-gradient mb-3">开始新对话</h2>
               <p className="text-muted-foreground max-w-md">
@@ -472,40 +472,40 @@ export function Chat({}: ChatProps) {
                 >
                   {msg.role === 'assistant' ? (
                     <div className="flex gap-3 items-start">
-                      <motion.div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <Bot size={22} className="text-[#0a0e27]" />
+                      <motion.div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <Bot size={22} className="text-primary-foreground" />
                       </motion.div>
                       <div className="flex-1 max-w-[70%]">
-                        <motion.div className="glass-strong rounded-2xl p-5 shadow-lg border border-[rgba(0,212,255,0.2)]">
-                          <div className="prose prose-invert max-w-none text-[#e8eaed]">
+                        <motion.div className="bg-card border border-border rounded-2xl p-5 shadow-lg border border-[rgba(0,212,255,0.2)]">
+                          <div className="prose prose-invert max-w-none text-foreground">
                             <ReactMarkdown
                               components={{
                                 h1: ({node, ...props}) => <h1 className="text-xl text-gradient mb-3" {...props} />,
-                                h2: ({node, ...props}) => <h2 className="text-lg text-[#00d4ff] mb-2" {...props} />,
-                                h3: ({node, ...props}) => <h3 className="text-base text-[#00d4ff] mb-2" {...props} />,
-                                p: ({node, ...props}) => <p className="text-[#e8eaed] mb-2 leading-relaxed" {...props} />,
-                                ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1 text-[#e8eaed] mb-2" {...props} />,
-                                ol: ({node, ...props}) => <ol className="list-decimal list-inside space-y-1 text-[#e8eaed] mb-2" {...props} />,
-                                li: ({node, ...props}) => <li className="text-[#e8eaed]" {...props} />,
-                                strong: ({node, ...props}) => <strong className="text-[#00d4ff] font-semibold" {...props} />,
-                                em: ({node, ...props}) => <em className="text-[#00ff88] italic" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="text-lg text-primary mb-2" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="text-base text-primary mb-2" {...props} />,
+                                p: ({node, ...props}) => <p className="text-foreground mb-2 leading-relaxed" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1 text-foreground mb-2" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal list-inside space-y-1 text-foreground mb-2" {...props} />,
+                                li: ({node, ...props}) => <li className="text-foreground" {...props} />,
+                                strong: ({node, ...props}) => <strong className="text-primary font-semibold" {...props} />,
+                                em: ({node, ...props}) => <em className="text-success italic" {...props} />,
                                 code: ({node, ...props}) => (
-                                  <code className="bg-[rgba(0,212,255,0.1)] text-[#00ff88] px-1.5 py-0.5 rounded text-sm" {...props} />
+                                  <code className="bg-[rgba(0,212,255,0.1)] text-success px-1.5 py-0.5 rounded text-sm" {...props} />
                                 ),
                                 pre: ({node, ...props}) => (
                                   <pre className="bg-[rgba(0,212,255,0.1)] p-3 rounded-xl overflow-x-auto my-2" {...props} />
                                 ),
                                 blockquote: ({node, ...props}) => (
-                                  <blockquote className="border-l-4 border-[#00d4ff] pl-4 py-2 my-2 text-muted-foreground italic" {...props} />
+                                  <blockquote className="border-l-4 border-primary pl-4 py-2 my-2 text-muted-foreground italic" {...props} />
                                 ),
                                 table: ({node, ...props}) => (
                                   <table className="w-full border border-[rgba(0,212,255,0.2)] rounded-lg my-2" {...props} />
                                 ),
                                 th: ({node, ...props}) => (
-                                  <th className="border border-[rgba(0,212,255,0.2)] px-3 py-2 bg-[rgba(0,212,255,0.1)] text-[#00d4ff]" {...props} />
+                                  <th className="border border-[rgba(0,212,255,0.2)] px-3 py-2 bg-[rgba(0,212,255,0.1)] text-primary" {...props} />
                                 ),
                                 td: ({node, ...props}) => (
-                                  <td className="border border-[rgba(0,212,255,0.2)] px-3 py-2 text-[#e8eaed]" {...props} />
+                                  <td className="border border-[rgba(0,212,255,0.2)] px-3 py-2 text-foreground" {...props} />
                                 ),
                                 hr: ({node, ...props}) => (
                                   <hr className="my-4 border-t border-[rgba(0,212,255,0.3)]" {...props} />
@@ -514,14 +514,14 @@ export function Chat({}: ChatProps) {
                             >
                               {msg.content}
                             </ReactMarkdown>
-                            {msg.isStreaming && <span className="inline-block w-2 h-5 bg-[#00d4ff] ml-1 animate-pulse" />}
+                            {msg.isStreaming && <span className="inline-block w-2 h-5 bg-primary ml-1 animate-pulse" />}
                           </div>
                         </motion.div>
                         {msg.sources && msg.sources.length > 0 && (
                           <div className="mt-3">
                             <motion.button
                               onClick={() => setExpandedCitation(expandedCitation === msg.id ? null : msg.id)}
-                              className="text-[#00d4ff] text-sm flex items-center gap-1 px-3 py-1.5 glass rounded-lg border border-[rgba(0,212,255,0.2)]"
+                              className="text-primary text-sm flex items-center gap-1 px-3 py-1.5 bg-card border border-border rounded-lg border border-[rgba(0,212,255,0.2)]"
                             >
                               📚 引用来源 [{msg.sources.length}个]
                               <ChevronDown size={14} className={`transition-transform ${expandedCitation === msg.id ? 'rotate-180' : ''}`} />
@@ -529,12 +529,12 @@ export function Chat({}: ChatProps) {
                             {expandedCitation === msg.id && (
                               <div className="mt-3 space-y-2">
                                 {msg.sources.map((source, idx) => (
-                                  <div key={idx} className="glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl p-4 text-sm">
+                                  <div key={idx} className="bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl p-4 text-sm">
                                     <div className="flex items-center gap-2 mb-2">
-                                      <span className="text-[#e8eaed]">📄 {source.filename}</span>
+                                      <span className="text-foreground">📄 {source.filename}</span>
                                     </div>
                                     <div className="flex gap-2 mb-3">
-                                      <span className="px-2 py-1 bg-[rgba(0,212,255,0.1)] text-[#00d4ff] rounded-lg text-xs">
+                                      <span className="px-2 py-1 bg-[rgba(0,212,255,0.1)] text-primary rounded-lg text-xs">
                                         相似度: {source.score.toFixed(3)}
                                       </span>
                                     </div>
@@ -551,12 +551,12 @@ export function Chat({}: ChatProps) {
                   ) : (
                     <div className="flex gap-3 items-start justify-end">
                       <div className="max-w-[70%]">
-                        <div className="bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-2xl p-5 shadow-lg">
+                        <div className="bg-primary text-primary-foreground rounded-2xl p-5 shadow-lg">
                           <p className="whitespace-pre-wrap">{msg.content}</p>
                         </div>
                         <div className="text-muted-foreground text-xs mt-2 text-right">{msg.timestamp}</div>
                       </div>
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-chart-5 to-chart-5 flex items-center justify-center flex-shrink-0 shadow-lg">
                         <User size={22} className="text-white" />
                       </div>
                     </div>
@@ -576,12 +576,12 @@ export function Chat({}: ChatProps) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="glass-strong border-t border-[rgba(0,212,255,0.15)] overflow-hidden"
+              className="bg-card border border-border border-t border-[rgba(0,212,255,0.15)] overflow-hidden"
             >
               <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[#e8eaed] font-medium flex items-center gap-2">
-                    <Settings size={16} className="text-[#00d4ff]" />
+                  <h3 className="text-foreground font-medium flex items-center gap-2">
+                    <Settings size={16} className="text-primary" />
                     模型配置
                   </h3>
                 </div>
@@ -592,7 +592,7 @@ export function Chat({}: ChatProps) {
                     <select
                       value={llmConfig.model_name}
                       onChange={(e) => setLLMConfig({...llmConfig, model_name: e.target.value})}
-                      className="w-full px-3 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-lg text-[#e8eaed] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       {availableModels.map(model => (
                         <option key={model.name} value={model.name}>
@@ -628,7 +628,7 @@ export function Chat({}: ChatProps) {
                       step="100"
                       value={llmConfig.max_tokens}
                       onChange={(e) => setLLMConfig({...llmConfig, max_tokens: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-lg text-[#e8eaed] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
 
@@ -639,7 +639,7 @@ export function Chat({}: ChatProps) {
                       value={llmConfig.api_key}
                       onChange={(e) => setLLMConfig({...llmConfig, api_key: e.target.value})}
                       placeholder="sk-xxxxxxxxxxxx"
-                      className="w-full px-3 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-lg text-[#e8eaed] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
@@ -653,7 +653,7 @@ export function Chat({}: ChatProps) {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="glass-strong border-t border-[rgba(0,212,255,0.15)] p-4">
+        <div className="bg-card border border-border border-t border-[rgba(0,212,255,0.15)] p-4">
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <textarea
@@ -662,7 +662,7 @@ export function Chat({}: ChatProps) {
                 onKeyPress={handleKeyPress}
                 placeholder={selectedKB ? '💬 输入你的问题...' : '⚠️ 请先选择知识库'}
                 disabled={!selectedKB || isLoading}
-                className="w-full min-h-[56px] max-h-[200px] px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] resize-none text-[#e8eaed] placeholder-[#94a3b8] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full min-h-[56px] max-h-[200px] px-4 py-3 bg-card border border-border border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary resize-none text-foreground placeholder-muted-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={1}
               />
               <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
@@ -672,7 +672,7 @@ export function Chat({}: ChatProps) {
             <motion.button
               onClick={handleSendMessage}
               disabled={!message.trim() || isLoading || !selectedKB}
-              className="w-14 h-14 rounded-xl bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="w-14 h-14 rounded-xl bg-primary text-primary-foreground flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               whileHover={!isLoading && message.trim() && selectedKB ? { scale: 1.05 } : {}}
               whileTap={!isLoading && message.trim() && selectedKB ? { scale: 0.95 } : {}}
             >

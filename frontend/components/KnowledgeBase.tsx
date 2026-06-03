@@ -220,14 +220,14 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
           placeholder="搜索知识库..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-12 pl-12 pr-4 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e] text-foreground placeholder-[#94a3b8] transition-all duration-200"
+          className="w-full h-12 pl-12 pr-4 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder-muted-foreground transition-all duration-200"
         />
       </motion.div>
 
       {/* Loading State */}
       {loading && (
         <div className="text-center text-muted-foreground py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0f766e]"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)]"></div>
           <p className="mt-4">加载中...</p>
         </div>
       )}
@@ -305,7 +305,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2.5 border border-[#ef4444] text-[#dc2626] rounded-md hover:bg-[#fef2f2] transition-colors"
+                  className="px-4 py-2.5 border border-[#ef4444] text-destructive rounded-md hover:bg-[#fef2f2] transition-colors"
                 >
                   <Trash2 size={18} />
                 </motion.button>
@@ -334,7 +334,7 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
                   value={newKbName}
                   onChange={(e) => setNewKbName(e.target.value)}
                   placeholder="请输入知识库名称（支持中文）"
-                  className="w-full rounded-md border border-border bg-card px-4 py-3 text-foreground placeholder-[#94a3b8] transition-all focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                  className="w-full rounded-md border border-border bg-card px-4 py-3 text-foreground placeholder-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary"
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateKB()}
                   autoFocus
                 />
