@@ -55,10 +55,9 @@ interface ChatSession {
 }
 
 interface ChatProps {
-  isV2?: boolean;
 }
 
-export function Chat({ isV2 = false }: ChatProps) {
+export function Chat({}: ChatProps) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,8 +92,6 @@ export function Chat({ isV2 = false }: ChatProps) {
           const filteredKBs = kbResult.knowledge_bases.filter((kb: KnowledgeBase) => {
             // 修复：检查 collection_name/display_name 而不是 collection_id
             const displayName = kb.display_name || kb.collection_id || '';
-            const isV2KB = displayName.endsWith('_v2');
-            return isV2 ? isV2KB : !isV2KB;
           });
           
           // ✅ V2模式：显示名称去掉 _v2 后缀
@@ -137,7 +134,7 @@ export function Chat({ isV2 = false }: ChatProps) {
     };
 
     fetchData();
-  }, [isV2]);  // ✅ 添加 isV2 依赖，版本切换时重新加载
+  }, []);  // ✅ 添加 isV2 依赖，版本切换时重新加载
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -379,7 +376,7 @@ export function Chat({ isV2 = false }: ChatProps) {
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {chatSessions.length === 0 ? (
-            <div className="text-[#94a3b8] text-sm text-center py-4">暂无历史对话</div>
+            <div className="text-muted-foreground text-sm text-center py-4">暂无历史对话</div>
           ) : (
             chatSessions.map(session => (
               <motion.div
@@ -401,10 +398,10 @@ export function Chat({ isV2 = false }: ChatProps) {
                         {session.title}
                       </p>
                     </div>
-                    <p className="text-[#94a3b8] text-xs truncate">
+                    <p className="text-muted-foreground text-xs truncate">
                       {session.knowledgeBaseName} • {session.messages.length}条消息
                     </p>
-                    <p className="text-[#64748b] text-xs mt-1">
+                    <p className="text-muted-foreground text-xs mt-1">
                       {new Date(session.updatedAt).toLocaleString('zh-CN', {
                         month: 'numeric',
                         day: 'numeric',
@@ -451,7 +448,7 @@ export function Chat({ isV2 = false }: ChatProps) {
             <ChevronDown size={16} className="text-[#00d4ff] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-[#94a3b8] text-sm">
+            <div className="text-muted-foreground text-sm">
               {messages.length > 0 && `${messages.length} 条消息`}
             </div>
             <motion.button
@@ -460,7 +457,7 @@ export function Chat({ isV2 = false }: ChatProps) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Settings size={18} className={`${showSettings ? 'text-[#00d4ff]' : 'text-[#94a3b8]'} transition-colors`} />
+              <Settings size={18} className={`${showSettings ? 'text-[#00d4ff]' : 'text-muted-foreground'} transition-colors`} />
             </motion.button>
           </div>
         </div>
@@ -473,7 +470,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                 <Bot size={48} className="text-[#0a0e27]" />
               </div>
               <h2 className="text-2xl text-gradient mb-3">开始新对话</h2>
-              <p className="text-[#94a3b8] max-w-md">
+              <p className="text-muted-foreground max-w-md">
                 {selectedKB ? `已选择知识库「${selectedKB.display_name}」，现在可以向我提问了` : '请先选择一个知识库，然后开始对话'}
               </p>
             </div>
@@ -512,7 +509,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                                   <pre className="bg-[rgba(0,212,255,0.1)] p-3 rounded-xl overflow-x-auto my-2" {...props} />
                                 ),
                                 blockquote: ({node, ...props}) => (
-                                  <blockquote className="border-l-4 border-[#00d4ff] pl-4 py-2 my-2 text-[#94a3b8] italic" {...props} />
+                                  <blockquote className="border-l-4 border-[#00d4ff] pl-4 py-2 my-2 text-muted-foreground italic" {...props} />
                                 ),
                                 table: ({node, ...props}) => (
                                   <table className="w-full border border-[rgba(0,212,255,0.2)] rounded-lg my-2" {...props} />
@@ -554,14 +551,14 @@ export function Chat({ isV2 = false }: ChatProps) {
                                         相似度: {source.score.toFixed(3)}
                                       </span>
                                     </div>
-                                    <div className="text-[#94a3b8] text-xs line-clamp-3">{source.chunk_text}</div>
+                                    <div className="text-muted-foreground text-xs line-clamp-3">{source.chunk_text}</div>
                                   </div>
                                 ))}
                               </div>
                             )}
                           </div>
                         )}
-                        <div className="text-[#94a3b8] text-xs mt-2">{msg.timestamp}</div>
+                        <div className="text-muted-foreground text-xs mt-2">{msg.timestamp}</div>
                       </div>
                     </div>
                   ) : (
@@ -570,7 +567,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                         <div className="bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-2xl p-5 shadow-lg">
                           <p className="whitespace-pre-wrap">{msg.content}</p>
                         </div>
-                        <div className="text-[#94a3b8] text-xs mt-2 text-right">{msg.timestamp}</div>
+                        <div className="text-muted-foreground text-xs mt-2 text-right">{msg.timestamp}</div>
                       </div>
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center flex-shrink-0 shadow-lg">
                         <User size={22} className="text-white" />
@@ -604,7 +601,7 @@ export function Chat({ isV2 = false }: ChatProps) {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">模型选择</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">模型选择</label>
                     <select
                       value={llmConfig.model_name}
                       onChange={(e) => setLLMConfig({...llmConfig, model_name: e.target.value})}
@@ -619,7 +616,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                   </div>
 
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">Temperature: {llmConfig.temperature}</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">Temperature: {llmConfig.temperature}</label>
                     <input
                       type="range"
                       min="0"
@@ -629,14 +626,14 @@ export function Chat({ isV2 = false }: ChatProps) {
                       onChange={(e) => setLLMConfig({...llmConfig, temperature: parseFloat(e.target.value)})}
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs text-[#94a3b8] mt-1">
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
                       <span>精确</span>
                       <span>创造</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">最大Token数</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">最大Token数</label>
                     <input
                       type="number"
                       min="100"
@@ -649,7 +646,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                   </div>
 
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">API Key</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">API Key</label>
                     <input
                       type="password"
                       value={llmConfig.api_key}
@@ -660,7 +657,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                   </div>
                 </div>
 
-                <div className="pt-2 text-xs text-[#94a3b8]">
+                <div className="pt-2 text-xs text-muted-foreground">
                   💡 提示：调整参数后立即生效，无需重启
                 </div>
               </div>
@@ -681,7 +678,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                 className="w-full min-h-[56px] max-h-[200px] px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] resize-none text-[#e8eaed] placeholder-[#94a3b8] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={1}
               />
-              <div className="absolute bottom-3 right-3 text-xs text-[#94a3b8]">
+              <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
                 {message.length}/2000
               </div>
             </div>

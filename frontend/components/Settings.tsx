@@ -78,7 +78,7 @@ export function Settings() {
                   className={`flex-1 px-6 py-4 transition-all relative flex items-center justify-center gap-2 group ${
                     activeTab === tab.id
                       ? 'text-[#00d4ff]'
-                      : 'text-[#94a3b8] hover:text-[#e8eaed]'
+                      : 'text-muted-foreground hover:text-[#e8eaed]'
                   }`}
                 >
                   {activeTab === tab.id && (
@@ -117,7 +117,7 @@ export function Settings() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">提供商</label>
+                    <label className="text-muted-foreground">提供商</label>
                     <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                       <option>Jina AI</option>
                       <option>OpenAI</option>
@@ -126,7 +126,7 @@ export function Settings() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">模型</label>
+                    <label className="text-muted-foreground">模型</label>
                     <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                       <option>jina-embeddings-v4</option>
                       <option>jina-embeddings-v3</option>
@@ -135,17 +135,17 @@ export function Settings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[#94a3b8]">维度</label>
+                  <label className="text-muted-foreground">维度</label>
                   <input
                     type="text"
                     value="2048"
                     disabled
-                    className="w-full px-4 py-3 glass rounded-xl bg-[rgba(15,18,53,0.8)] text-[#94a3b8] border border-[rgba(0,212,255,0.1)]"
+                    className="w-full px-4 py-3 glass rounded-xl bg-[rgba(15,18,53,0.8)] text-muted-foreground border border-[rgba(0,212,255,0.1)]"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[#94a3b8]">API Key</label>
+                  <label className="text-muted-foreground">API Key</label>
                   <div className="flex gap-3">
                     <div className="flex-1 relative">
                       <input
@@ -155,7 +155,7 @@ export function Settings() {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#94a3b8] hover:text-[#00d4ff] transition-colors"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-[#00d4ff] transition-colors"
                       >
                         {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -203,7 +203,7 @@ export function Settings() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">提供商</label>
+                    <label className="text-muted-foreground">提供商</label>
                     <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                       <option>OpenAI</option>
                       <option>Claude</option>
@@ -212,7 +212,7 @@ export function Settings() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">模型</label>
+                    <label className="text-muted-foreground">模型</label>
                     <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                       <option>gpt-4-turbo</option>
                       <option>gpt-3.5-turbo</option>
@@ -223,7 +223,7 @@ export function Settings() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[#94a3b8]">Temperature</label>
+                      <label className="text-muted-foreground">Temperature</label>
                       <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{temperature[0]}</span>
                     </div>
                     <Slider
@@ -238,7 +238,7 @@ export function Settings() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[#94a3b8]">Max Tokens</label>
+                      <label className="text-muted-foreground">Max Tokens</label>
                       <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{maxTokens[0]}</span>
                     </div>
                     <Slider
@@ -264,7 +264,7 @@ export function Settings() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">提供商</label>
+                    <label className="text-muted-foreground">提供商</label>
                     <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                       <option>Cohere</option>
                       <option>Jina</option>
@@ -272,7 +272,7 @@ export function Settings() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">模型</label>
+                    <label className="text-muted-foreground">模型</label>
                     <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                       <option>rerank-v3</option>
                       <option>rerank-v2</option>
@@ -322,7 +322,7 @@ export function Settings() {
                         快速模式(PyMuPDF4LLM)
                       </span>
                     </div>
-                    <p className="text-sm text-[#94a3b8] relative z-10">
+                    <p className="text-sm text-muted-foreground relative z-10">
                       使用PyMuPDF进行快速文档提取，适合简单文档
                     </p>
                   </motion.button>
@@ -348,7 +348,7 @@ export function Settings() {
                         精确模式(VLM)
                       </span>
                     </div>
-                    <p className="text-sm text-[#94a3b8] relative z-10">
+                    <p className="text-sm text-muted-foreground relative z-10">
                       使用视觉语言模型进行精确提取，支持复杂布局
                     </p>
                   </motion.button>
@@ -361,7 +361,7 @@ export function Settings() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">Chunk Size</label>
+                    <label className="text-muted-foreground">Chunk Size</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -369,14 +369,14 @@ export function Settings() {
                         onChange={(e) => setChunkSize(parseInt(e.target.value))}
                         className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-[#94a3b8]">
+                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         tokens
                       </span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">Overlap</label>
+                    <label className="text-muted-foreground">Overlap</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -384,35 +384,35 @@ export function Settings() {
                         onChange={(e) => setOverlap(parseInt(e.target.value))}
                         className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-[#94a3b8]">
+                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         tokens
                       </span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">Max Page Span</label>
+                    <label className="text-muted-foreground">Max Page Span</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
                         defaultValue={2}
                         className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-[#94a3b8]">
+                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         页
                       </span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[#94a3b8]">Bridge Length</label>
+                    <label className="text-muted-foreground">Bridge Length</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
                         defaultValue={100}
                         className="flex-1 px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed]"
                       />
-                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-[#94a3b8]">
+                      <span className="px-4 py-3 glass rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
                         tokens
                       </span>
                     </div>
@@ -420,7 +420,7 @@ export function Settings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[#94a3b8]">切分方法</label>
+                  <label className="text-muted-foreground">切分方法</label>
                   <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                     <option>递归字符分割</option>
                     <option>固定大小分割</option>
@@ -446,7 +446,7 @@ export function Settings() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[#94a3b8]">Top K</label>
+                      <label className="text-muted-foreground">Top K</label>
                       <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{topK[0]}</span>
                     </div>
                     <Slider
@@ -461,7 +461,7 @@ export function Settings() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[#94a3b8]">相似度阈值</label>
+                      <label className="text-muted-foreground">相似度阈值</label>
                       <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{similarityThreshold[0]}</span>
                     </div>
                     <Slider
@@ -486,7 +486,7 @@ export function Settings() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                   >
-                    <label className="text-[#94a3b8]">Rerank Top K</label>
+                    <label className="text-muted-foreground">Rerank Top K</label>
                     <input
                       type="number"
                       defaultValue={3}
@@ -525,7 +525,7 @@ export function Settings() {
                         <div className={`mb-2 ${searchMode === mode.id ? 'text-[#00d4ff]' : 'text-[#e8eaed]'}`}>
                           {mode.label}
                         </div>
-                        <div className="text-xs text-[#94a3b8]">{mode.desc}</div>
+                        <div className="text-xs text-muted-foreground">{mode.desc}</div>
                       </div>
                     </motion.button>
                   ))}
@@ -543,7 +543,7 @@ export function Settings() {
               transition={{ duration: 0.3 }}
             >
               <div className="space-y-2">
-                <label className="text-[#94a3b8]">语言</label>
+                <label className="text-muted-foreground">语言</label>
                 <select className="w-full px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] text-[#e8eaed] bg-[rgba(15,18,53,0.6)]">
                   <option>🇨🇳 简体中文</option>
                   <option>🇺🇸 English</option>
@@ -551,7 +551,7 @@ export function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[#94a3b8]">最大文件大小</label>
+                <label className="text-muted-foreground">最大文件大小</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -566,7 +566,7 @@ export function Settings() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[#94a3b8]">允许的文件类型</label>
+                <label className="text-muted-foreground">允许的文件类型</label>
                 <div className="flex flex-wrap gap-2">
                   {['PDF', 'Markdown', 'Word', 'Image', 'Audio'].map((type) => (
                     <motion.button
@@ -582,7 +582,7 @@ export function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[#94a3b8]">上传文件夹路径</label>
+                <label className="text-muted-foreground">上传文件夹路径</label>
                 <div className="flex gap-2">
                   <input
                     type="text"

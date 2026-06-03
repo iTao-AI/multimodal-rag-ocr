@@ -87,7 +87,7 @@ export function RetrievalTest() {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="mb-4">
-          <label className="text-sm text-[#94a3b8] mb-2 block">知识库名称</label>
+          <label className="text-sm text-muted-foreground mb-2 block">知识库名称</label>
           <input
             type="text"
             value={collectionName}
@@ -137,7 +137,7 @@ export function RetrievalTest() {
         <div className="grid grid-cols-2 gap-6 mb-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-[#94a3b8]">Top K</label>
+              <label className="text-muted-foreground">Top K</label>
               <span className="text-[#00d4ff] px-3 py-1 rounded-lg bg-[rgba(0,212,255,0.1)] border border-[rgba(0,212,255,0.2)]">{topK[0]}</span>
             </div>
             <Slider
@@ -152,7 +152,7 @@ export function RetrievalTest() {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-[#94a3b8]">相似度阈值</label>
+              <label className="text-muted-foreground">相似度阈值</label>
               <input
                 type="number"
                 value={similarityThreshold}
@@ -183,7 +183,7 @@ export function RetrievalTest() {
 
         {/* Search Mode */}
         <div className="space-y-3">
-          <label className="text-[#94a3b8]">搜索模式</label>
+          <label className="text-muted-foreground">搜索模式</label>
           <div className="grid grid-cols-3 gap-4">
             {[
               { id: 'vector', label: '向量', icon: '🔵', desc: '语义搜索' },
@@ -208,7 +208,7 @@ export function RetrievalTest() {
                 <span className={`relative z-10 ${searchMode === mode.id ? 'text-[#00d4ff]' : 'text-[#e8eaed]'}`}>
                   {mode.label}
                 </span>
-                <span className="text-xs text-[#94a3b8] relative z-10">{mode.desc}</span>
+                <span className="text-xs text-muted-foreground relative z-10">{mode.desc}</span>
               </motion.button>
             ))}
           </div>
@@ -227,13 +227,13 @@ export function RetrievalTest() {
             <span className="text-2xl">📊</span>
             检索结果
           </h3>
-          <span className="text-[#94a3b8] px-4 py-2 rounded-lg glass-strong border border-[rgba(0,212,255,0.2)]">
+          <span className="text-muted-foreground px-4 py-2 rounded-lg glass-strong border border-[rgba(0,212,255,0.2)]">
             (共{results.length}个)
           </span>
         </div>
 
         {results.length === 0 ? (
-          <div className="text-center py-12 text-[#94a3b8]">
+          <div className="text-center py-12 text-muted-foreground">
             <Search size={48} className="mx-auto mb-4 opacity-50" />
             <p>输入问题后点击"检索"按钮查看结果</p>
           </div>
@@ -262,7 +262,7 @@ export function RetrievalTest() {
                 {/* Score Visualization */}
                 <div className="mb-4 space-y-3">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm text-[#94a3b8] w-20">相似度:</span>
+                    <span className="text-sm text-muted-foreground w-20">相似度:</span>
                     <div className="flex-1 h-2.5 bg-[rgba(15,18,53,0.8)] rounded-full overflow-hidden border border-[rgba(0,212,255,0.2)]">
                       <motion.div
                         initial={{ width: 0 }}
@@ -278,7 +278,7 @@ export function RetrievalTest() {
 
                   {enableRerank && result.rerank !== undefined && (
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-[#94a3b8] w-20">重排序:</span>
+                      <span className="text-sm text-muted-foreground w-20">重排序:</span>
                       <div className="flex-1 h-2.5 bg-[rgba(15,18,53,0.8)] rounded-full overflow-hidden border border-[rgba(0,255,136,0.2)]">
                         <motion.div
                           initial={{ width: 0 }}
@@ -298,11 +298,11 @@ export function RetrievalTest() {
                 <div className="mb-3 text-[#e8eaed] flex items-center gap-2">
                   <span>📄</span>
                   <span>{result.source}</span>
-                  <span className="text-[#94a3b8]">- 第{result.page}页</span>
+                  <span className="text-muted-foreground">- 第{result.page}页</span>
                 </div>
 
                 {/* Content Preview */}
-                <div className="glass rounded-xl p-4 mb-4 text-sm text-[#94a3b8] max-h-[120px] overflow-auto border border-[rgba(0,212,255,0.1)]">
+                <div className="glass rounded-xl p-4 mb-4 text-sm text-muted-foreground max-h-[120px] overflow-auto border border-[rgba(0,212,255,0.1)]">
                   <div dangerouslySetInnerHTML={{ __html: highlightKeywords(result.content, ['RAG', 'retrieval', 'generation']) }} />
                 </div>
 

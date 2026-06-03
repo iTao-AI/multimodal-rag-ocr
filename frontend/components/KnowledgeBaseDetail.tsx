@@ -10,7 +10,6 @@ interface KnowledgeBaseDetailProps {
   collectionId: string;
   onBack: () => void;
   onViewDocument: (fileId: string) => void;
-  isV2?: boolean;
 }
 
 interface DocumentData {
@@ -29,7 +28,7 @@ interface KBInfo {
   last_updated: string | null;
 }
 
-export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2 = false }: KnowledgeBaseDetailProps) {
+export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: KnowledgeBaseDetailProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [kbInfo, setKbInfo] = useState<KBInfo | null>(null);
@@ -158,7 +157,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
   if (!kbInfo) {
     return (
       <div className="text-center py-12">
-        <p className="text-[#94a3b8]">知识库不存在</p>
+        <p className="text-muted-foreground">知识库不存在</p>
       </div>
     );
   }
@@ -206,7 +205,6 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
         onClose={() => setShowUploadDialog(false)}
         onUpload={handleUpload}
         preselectedKB={collectionId}
-        isV2={isV2}
       />
 
       {/* Summary Bar */}
@@ -222,7 +220,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
         <span className="px-4 py-2 glass-strong rounded-xl border border-[rgba(0,255,136,0.2)] text-[#00ff88]">
           {kbInfo.total_chunks} chunks
         </span>
-        <span className="px-4 py-2 glass-strong rounded-xl border border-[rgba(0,212,255,0.2)] text-[#94a3b8]">
+        <span className="px-4 py-2 glass-strong rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground">
           最后更新: {getRelativeTime(kbInfo.last_updated)}
         </span>
       </motion.div>
@@ -269,7 +267,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
           animate={{ opacity: 1, y: 0 }}
           className="text-center py-12"
         >
-          <p className="text-[#94a3b8]">
+          <p className="text-muted-foreground">
             {documents.length === 0 ? '暂无文档' : '没有找到匹配的文档'}
           </p>
         </motion.div>
@@ -300,7 +298,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument, isV2
                   <div className="text-[#e8eaed] mb-2 group-hover:text-[#00d4ff] transition-colors truncate" title={doc.filename}>
                     {doc.filename}
                   </div>
-                  <div className="text-[#94a3b8] text-sm flex items-center gap-3">
+                  <div className="text-muted-foreground text-sm flex items-center gap-3">
                     <span className="px-2 py-1 glass rounded-lg border border-[rgba(0,212,255,0.1)]">
                       {doc.chunks} chunks
                     </span>

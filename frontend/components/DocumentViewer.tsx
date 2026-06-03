@@ -105,7 +105,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
   if (!docData) {
     return (
       <div className="text-center py-12">
-        <p className="text-[#94a3b8]">文档不存在</p>
+        <p className="text-muted-foreground">文档不存在</p>
       </div>
     );
   }
@@ -153,7 +153,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 className={`flex-1 px-6 py-4 transition-all relative ${
                   activeTab === tab.id
                     ? 'text-[#00d4ff]'
-                    : 'text-[#94a3b8] hover:text-[#e8eaed]'
+                    : 'text-muted-foreground hover:text-[#e8eaed]'
                 }`}
               >
                 {tab.label}
@@ -216,7 +216,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                       h1: ({node, ...props}) => <h1 className="text-2xl text-gradient mb-4" {...props} />,
                       h2: ({node, ...props}) => <h2 className="text-xl text-[#00d4ff] mb-3" {...props} />,
                       h3: ({node, ...props}) => <h3 className="text-lg text-[#00d4ff] mb-2" {...props} />,
-                      p: ({node, ...props}) => <p className="text-[#94a3b8] mb-3" {...props} />,
+                      p: ({node, ...props}) => <p className="text-muted-foreground mb-3" {...props} />,
                       code: ({node, ...props}) => (
                         <code className="bg-[rgba(0,212,255,0.1)] text-[#00ff88] px-2 py-1 rounded" {...props} />
                       ),
@@ -257,26 +257,26 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-[#e8eaed]">Chunk #{index + 1}</span>
-                      <span className="text-[#94a3b8] flex items-center gap-1">
+                      <span className="text-muted-foreground flex items-center gap-1">
                         📍第 {chunk.page_start}{chunk.page_start !== chunk.page_end ? `-${chunk.page_end}` : ''} 页
                       </span>
-                      <span className="text-[#94a3b8] flex items-center gap-1">
+                      <span className="text-muted-foreground flex items-center gap-1">
                         📏 {chunk.text_length} 字符
                       </span>
                     </div>
 
-                    <div className="p-4 glass-strong rounded-xl border border-[rgba(0,212,255,0.1)] font-mono text-sm mb-4 text-[#94a3b8] max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+                    <div className="p-4 glass-strong rounded-xl border border-[rgba(0,212,255,0.1)] font-mono text-sm mb-4 text-muted-foreground max-h-[200px] overflow-y-auto whitespace-pre-wrap">
                       {chunk.text}
                     </div>
 
                     <div className="flex gap-2">
-                      <span className={`px-3 py-1 rounded-lg text-xs ${chunk.cross_page_bridge ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border border-[rgba(0,255,136,0.2)]' : 'bg-[rgba(148,163,184,0.1)] text-[#94a3b8] border border-[rgba(148,163,184,0.2)]'}`}>
+                      <span className={`px-3 py-1 rounded-lg text-xs ${chunk.cross_page_bridge ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border border-[rgba(0,255,136,0.2)]' : 'bg-[rgba(148,163,184,0.1)] text-muted-foreground border border-[rgba(148,163,184,0.2)]'}`}>
                         跨页: {chunk.cross_page_bridge ? '✅' : '❌'}
                       </span>
-                      <span className={`px-3 py-1 rounded-lg text-xs ${chunk.continued ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border border-[rgba(0,255,136,0.2)]' : 'bg-[rgba(148,163,184,0.1)] text-[#94a3b8] border border-[rgba(148,163,184,0.2)]'}`}>
+                      <span className={`px-3 py-1 rounded-lg text-xs ${chunk.continued ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border border-[rgba(0,255,136,0.2)]' : 'bg-[rgba(148,163,184,0.1)] text-muted-foreground border border-[rgba(148,163,184,0.2)]'}`}>
                         续接: {chunk.continued ? '✅' : '❌'}
                       </span>
-                      <span className={`px-3 py-1 rounded-lg text-xs ${chunk.is_table_like ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border border-[rgba(0,255,136,0.2)]' : 'bg-[rgba(148,163,184,0.1)] text-[#94a3b8] border border-[rgba(148,163,184,0.2)]'}`}>
+                      <span className={`px-3 py-1 rounded-lg text-xs ${chunk.is_table_like ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border border-[rgba(0,255,136,0.2)]' : 'bg-[rgba(148,163,184,0.1)] text-muted-foreground border border-[rgba(148,163,184,0.2)]'}`}>
                         表格: {chunk.is_table_like ? '✅' : '❌'}
                       </span>
                     </div>
@@ -300,11 +300,11 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 </h3>
                 <div className="space-y-3">
                   <div className="p-4 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl">
-                    <p className="text-[#94a3b8] mb-2">总页数</p>
+                    <p className="text-muted-foreground mb-2">总页数</p>
                     <div className="text-2xl text-[#00d4ff]">{docData.total_pages}</div>
                   </div>
                   <div className="p-4 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl">
-                    <p className="text-[#94a3b8] mb-2">提取时间</p>
+                    <p className="text-muted-foreground mb-2">提取时间</p>
                     <div className="text-sm text-[#00d4ff]">
                       {new Date(docData.extraction_time).toLocaleString('zh-CN')}
                     </div>
@@ -319,11 +319,11 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 </h3>
                 <div className="space-y-3">
                   <div className="p-4 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl">
-                    <p className="text-[#94a3b8] mb-2">总切分块数</p>
+                    <p className="text-muted-foreground mb-2">总切分块数</p>
                     <div className="text-2xl text-[#00d4ff]">{docData.total_chunks}</div>
                   </div>
                   <div className="p-4 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl">
-                    <p className="text-[#94a3b8] mb-2">跨页块数</p>
+                    <p className="text-muted-foreground mb-2">跨页块数</p>
                     <div className="text-2xl text-[#00ff88]">
                       {docData.chunks.filter(c => c.cross_page_bridge).length}
                     </div>
@@ -338,7 +338,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 </h3>
                 <div className="space-y-3">
                   <div className="p-4 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl">
-                    <p className="text-[#94a3b8] mb-2">提取图片数</p>
+                    <p className="text-muted-foreground mb-2">提取图片数</p>
                     <div className="text-2xl text-[#00d4ff]">{docData.total_images}</div>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                 上一页
               </motion.button>
 
-              <span className="text-[#94a3b8] px-4 py-2 glass rounded-xl border border-[rgba(0,212,255,0.2)]">
+              <span className="text-muted-foreground px-4 py-2 glass rounded-xl border border-[rgba(0,212,255,0.2)]">
                 第 <span className="text-[#00d4ff]">{currentPage}</span> / {docData.total_pages} 页
               </span>
 
