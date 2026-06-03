@@ -280,7 +280,7 @@ export function KnowledgeBaseDetail({ collectionId, onBack, onViewDocument }: Kn
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
               whileHover={{ y: -2 }}
-              className="glass gradient-border rounded-xl p-5 hover:shadow-[0_0_25px_rgba(0,212,255,0.2)] transition-all group relative overflow-hidden"
+              className="bg-card border border-border rounded-xl p-5 hover:bg-secondary transition-all group relative overflow-hidden"
             >
               {/* Hover shimmer */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">

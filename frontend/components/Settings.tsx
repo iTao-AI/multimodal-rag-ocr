@@ -60,7 +60,7 @@ export function Settings() {
     <div className="space-y-6">
       {/* Tab Navigation */}
       <motion.div 
-        className="glass gradient-border rounded-2xl overflow-hidden"
+        className="bg-card border border-border rounded-2xl overflow-hidden"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >

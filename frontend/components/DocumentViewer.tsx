@@ -136,7 +136,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
 
       {/* Tab Navigation */}
       <motion.div
-        className="glass gradient-border rounded-2xl overflow-hidden"
+        className="bg-card border border-border rounded-2xl overflow-hidden"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -253,7 +253,7 @@ export function DocumentViewer({ fileId, onBack }: DocumentViewerProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     whileHover={{ y: -2 }}
-                    className="glass gradient-border rounded-xl p-5 hover:shadow-[0_0_20px_rgba(0,212,255,0.2)] transition-all group"
+                    className="bg-card border border-border rounded-xl p-5 hover:bg-secondary transition-all group"
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-foreground">Chunk #{index + 1}</span>

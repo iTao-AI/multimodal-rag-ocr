@@ -58,7 +58,7 @@ export function ConfirmDialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="glass gradient-border rounded-2xl p-8 w-full max-w-md mx-4 relative overflow-hidden"
+          className="bg-card border border-border rounded-2xl p-8 w-full max-w-md mx-4 relative overflow-hidden"
         >
           {/* Background shimmer effect */}
           <div className="absolute inset-0 opacity-5">

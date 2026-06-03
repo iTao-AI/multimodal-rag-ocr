@@ -53,7 +53,7 @@ export function Toast({
   const getBorderColor = () => {
     switch (type) {
       case 'success':
-        return 'border-[#00ff88]';
+        return 'border-success';
       case 'error':
         return 'border-[#ff3b5c]';
       case 'warning':

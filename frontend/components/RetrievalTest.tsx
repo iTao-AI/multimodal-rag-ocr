@@ -82,7 +82,7 @@ export function RetrievalTest() {
     <div className="space-y-6">
       {/* Query Input */}
       <motion.div 
-        className="glass gradient-border rounded-2xl p-6"
+        className="bg-card border border-border rounded-2xl p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -121,7 +121,7 @@ export function RetrievalTest() {
 
       {/* Configuration Panel */}
       <motion.div 
-        className="glass gradient-border rounded-2xl p-6"
+        className="bg-card border border-border rounded-2xl p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -217,7 +217,7 @@ export function RetrievalTest() {
 
       {/* Results Section */}
       <motion.div 
-        className="glass gradient-border rounded-2xl p-6"
+        className="bg-card border border-border rounded-2xl p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
@@ -302,7 +302,7 @@ export function RetrievalTest() {
                 </div>
 
                 {/* Content Preview */}
-                <div className="glass rounded-xl p-4 mb-4 text-sm text-muted-foreground max-h-[120px] overflow-auto border border-[rgba(0,212,255,0.1)]">
+                <div className="bg-card border border-border rounded-xl p-4 mb-4 text-sm text-muted-foreground max-h-[120px] overflow-auto">
                   <div dangerouslySetInnerHTML={{ __html: highlightKeywords(result.content, ['RAG', 'retrieval', 'generation']) }} />
                 </div>
 

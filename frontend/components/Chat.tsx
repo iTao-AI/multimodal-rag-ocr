@@ -372,7 +372,7 @@ export function Chat({}: ChatProps) {
                 className={`p-3 rounded-lg cursor-pointer transition-all group ${
                   currentSessionId === session.id
                     ? 'bg-[rgba(0,212,255,0.15)] border border-[rgba(0,212,255,0.3)]'
-                    : 'glass hover:bg-primary/10'
+                    : 'bg-card border border-border hover:bg-primary/10'
                 }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
