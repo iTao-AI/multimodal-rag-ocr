@@ -10,35 +10,12 @@ import { Chat } from './components/Chat';
 import { RetrievalTest } from './components/RetrievalTest';
 import { Settings } from './components/Settings';
 import { Toaster } from './components/ui/sonner';
-import { toast } from 'sonner';
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  
-  // 从localStorage读取版本状态，默认v1.0
-  const [isV2, setIsV2] = useState(() => {
-    const saved = localStorage.getItem('rag_version');
-    return saved === 'v2';
-  });
-
-  // 移动端侧边栏折叠状态
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const handleToggleVersion = () => {
-    const newVersion = !isV2;
-    setIsV2(newVersion);
-    // 保存到localStorage
-    localStorage.setItem('rag_version', newVersion ? 'v2' : 'v1');
-    // 显示切换提示
-    toast.success(`已切换到 ${newVersion ? 'v2.0 (OCR增强版)' : 'v1.0'}`, {
-      description: newVersion 
-        ? '支持 MinerU、DeepSeek-OCR、PaddleOCR-VL' 
-        : '支持快速模式和精确模式(VLM)',
-      duration: 3000,
-    });
-  };
 
   const getHeaderTitle = () => {
     switch (activeView) {
@@ -77,9 +54,7 @@ export default function App() {
   };
 
   const handleBackToDetail = () => {
-    // 只清除文档选择，保留知识库选择，返回到知识库详情页
     setSelectedDocument(null);
-    // selectedKnowledgeBase 保持不变，这样就返回到知识库详情页
   };
 
   const renderContent = () => {
@@ -93,18 +68,17 @@ export default function App() {
             collectionId={selectedKnowledgeBase}
             onBack={handleBackToKnowledgeBase}
             onViewDocument={handleViewDocument}
-            isV2={isV2}
           />
         );
       }
-      return <KnowledgeBase onViewDetail={handleViewKnowledgeBaseDetail} isV2={isV2} />;
+      return <KnowledgeBase onViewDetail={handleViewKnowledgeBaseDetail} />;
     }
 
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} isV2={isV2} />;
+        return <Dashboard onNavigate={handleNavigate} />;
       case 'chat':
-        return <Chat isV2={isV2} />;  {/* ✅ 传递 isV2 属性 */}
+        return <Chat />;
       case 'retrieval':
         return <RetrievalTest />;
       case 'settings':
@@ -115,12 +89,10 @@ export default function App() {
   };
 
   return (
-    <div className={`professional-app min-h-screen bg-[#f4f6f8] text-[#111827] ${isV2 ? 'theme-v2' : ''}`}>
+    <div className="min-h-screen bg-background text-foreground">
       <Sidebar
         activeView={activeView}
         onNavigate={(view) => { handleNavigate(view); setSidebarOpen(false); }}
-        isV2={isV2}
-        onToggleVersion={handleToggleVersion}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
@@ -155,15 +127,14 @@ export default function App() {
         </main>
       </div>
 
-      <Toaster 
-        theme="light"
+      <Toaster
+        theme="dark"
         position="top-right"
         toastOptions={{
           style: {
-            background: 'white',
-            color: '#111827',
-            border: '1px solid #dbe3ea',
-            boxShadow: '0 18px 50px rgba(15, 23, 42, 0.12)',
+            background: '#202122',
+            color: '#f4f4f5',
+            border: '1px solid #2d2d30',
           },
         }}
       />
