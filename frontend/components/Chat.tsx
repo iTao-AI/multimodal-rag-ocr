@@ -89,25 +89,12 @@ export function Chat({}: ChatProps) {
           // ✅ 根据版本过滤知识库
           // V1模式：只显示不带 _v2 后缀的
           // V2模式：只显示带 _v2 后缀的
-          const filteredKBs = kbResult.knowledge_bases.filter((kb: KnowledgeBase) => {
-            // 修复：检查 collection_name/display_name 而不是 collection_id
-            const displayName = kb.display_name || kb.collection_id || '';
-          });
+          const filteredKBs = kbResult.knowledge_bases;
           
           // ✅ V2模式：显示名称去掉 _v2 后缀
-          const processedKBs = filteredKBs.map((kb: KnowledgeBase) => {
-            if (isV2 && kb.display_name.endsWith('_v2')) {
-              return {
-                ...kb,
-                display_name: kb.display_name.slice(0, -3)
-              };
-            }
-            return kb;
-          });
-          
-          setKnowledgeBases(processedKBs);
-          if (processedKBs.length > 0) {
-            setSelectedKB(processedKBs[0]);
+          setKnowledgeBases(filteredKBs);
+          if (filteredKBs.length > 0) {
+            setSelectedKB(filteredKBs[0]);
           }
         }
 

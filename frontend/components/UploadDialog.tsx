@@ -715,7 +715,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, preselectedKB }: Uploa
                       <label className="text-[#334155] font-medium">
                         提取模式
                                               </label>
-                      <div className={`grid ${grid-cols-2 sm:grid-cols-3} gap-3`}>
+                      <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3`}>
                         {allExtractionMethods.map((method) => (
                           <button
                             key={method.id}

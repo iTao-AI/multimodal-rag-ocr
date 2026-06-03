@@ -52,10 +52,31 @@ export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
       if (result.status === 'success') {
         const collections = result.data.collections || [];
 
-        // ✅ 根据版本过滤知识库
-        // V1模式：只显示不带 _v2 后缀的Collection
-        // V2模式：只显示带 _v2 后缀的Collection
-        const filteredCollections = collections;
+        const kbData = collections.map((col: any, index: number) => {
+          const displayName = col.collection_name || '未命名知识库';
+          let updated = '未知';
+          if (col.last_updated) {
+            const date = new Date(col.last_updated);
+            const now = new Date();
+            const diffMs = now.getTime() - date.getTime();
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffHours < 1) updated = '刚刚';
+            else if (diffHours < 24) updated = `${diffHours}小时前`;
+            else if (diffDays < 7) updated = `${diffDays}天前`;
+            else updated = date.toLocaleDateString('zh-CN');
+          }
+          return {
+            id: index + 1,
+            collection_id: col.collection_id,
+            name: displayName,
+            icon: 'Database',
+            iconBg: 'bg-primary/10',
+            documents: col.total_documents || 0,
+            chunks: col.total_chunks || 0,
+            updated,
+            storageUsed: Math.round((col.total_chunks || 0) * 0.5 / 1024 * 10) / 10,
+          };
         });
 
         setKnowledgeBases(kbData);
