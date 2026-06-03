@@ -8,7 +8,6 @@ import { safeFetchJSON } from '../src/api';
 
 interface KnowledgeBaseProps {
   onViewDetail: (collectionId: string) => void;
-  isV2?: boolean;
 }
 
 interface KnowledgeBaseData {
@@ -23,7 +22,7 @@ interface KnowledgeBaseData {
   storageUsed: number;
 }
 
-export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps) {
+export function KnowledgeBase({ onViewDetail }: KnowledgeBaseProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseData[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -43,7 +42,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
   // 从Milvus API获取知识库列表
   useEffect(() => {
     fetchKnowledgeBases();
-  }, [isV2]);  // ✅ 添加 isV2 依赖，版本切换时重新获取
+  }, []);
 
   const fetchKnowledgeBases = async () => {
     setLoading(true);
@@ -53,31 +52,8 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
       if (result.status === 'success') {
         const collections = result.data.collections || [];
 
-        // ✅ 根据版本过滤知识库
-        // V1模式：只显示不带 _v2 后缀的Collection
-        // V2模式：只显示带 _v2 后缀的Collection
-        const filteredCollections = collections.filter((col: any) => {
-          // 修复：检查 collection_name 而不是 collection_id
-          // 因为后端生成的 collection_id 格式是 kb_{timestamp}，不包含 _v2
-          // 但 collection_name 是用户输入的 display_name，包含 _v2
-          const collectionName = col.collection_name || '';
-          const isV2Collection = collectionName.endsWith('_v2');
-          
-          if (isV2) {
-            // V2模式：只显示带 _v2 后缀的
-            return isV2Collection;
-          } else {
-            // V1模式：只显示不带 _v2 后缀的
-            return !isV2Collection;
-          }
-        });
-
-        // 图标映射
-        const icons = ['📘', '📗', '📙', '📕', '📔', '📓'];
-        const iconBgs = ['bg-blue-100', 'bg-green-100', 'bg-orange-100', 'bg-red-100', 'bg-purple-100', 'bg-pink-100'];
-
-        const kbData = filteredCollections.map((col: any, index: number) => {
-          // 格式化更新时间
+        const kbData = collections.map((col: any, index: number) => {
+          const displayName = col.collection_name || '未命名知识库';
           let updated = '未知';
           if (col.last_updated) {
             const date = new Date(col.last_updated);
@@ -85,34 +61,21 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
             const diffMs = now.getTime() - date.getTime();
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
             const diffDays = Math.floor(diffHours / 24);
-
-            if (diffHours < 1) {
-              updated = '刚刚';
-            } else if (diffHours < 24) {
-              updated = `${diffHours}小时前`;
-            } else if (diffDays < 7) {
-              updated = `${diffDays}天前`;
-            } else {
-              updated = date.toLocaleDateString('zh-CN');
-            }
+            if (diffHours < 1) updated = '刚刚';
+            else if (diffHours < 24) updated = `${diffHours}小时前`;
+            else if (diffDays < 7) updated = `${diffDays}天前`;
+            else updated = date.toLocaleDateString('zh-CN');
           }
-
-          // ✅ V2模式：显示名称去掉 _v2 后缀，让用户看到更友好的名称
-          let displayName = col.collection_name;
-          if (isV2 && displayName.endsWith('_v2')) {
-            displayName = displayName.slice(0, -3);  // 去掉 "_v2"
-          }
-
           return {
             id: index + 1,
-            collection_id: col.collection_id,  // Milvus内部ID（保留原始ID，包含_v2）
-            name: displayName,  // 显示名称（去掉_v2后缀）
-            icon: icons[index % icons.length],
-            iconBg: iconBgs[index % iconBgs.length],
+            collection_id: col.collection_id,
+            name: displayName,
+            icon: 'Database',
+            iconBg: 'bg-primary/10',
             documents: col.total_documents || 0,
             chunks: col.total_chunks || 0,
-            updated: updated,
-            storageUsed: Math.min(95, Math.floor((col.total_chunks || 0) / 100)), // 简单的存储使用率估算
+            updated,
+            storageUsed: Math.round((col.total_chunks || 0) * 0.5 / 1024 * 10) / 10,
           };
         });
 
@@ -136,10 +99,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
     }
 
     try {
-      // ✅ V2模式：自动添加 _v2 后缀
-      const actualKbName = isV2 ? `${newKbName}_v2` : newKbName;
-      
-      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/create?display_name=${encodeURIComponent(actualKbName)}`, {
+      const result = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/create?display_name=${encodeURIComponent(newKbName)}`, {
         method: 'POST',
       });
 
@@ -199,14 +159,14 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-[#0f766e] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
             <Database size={21} className="text-white" />
           </div>
-          <h2 className="text-lg font-semibold text-[#111827]">知识库管理</h2>
+          <h2 className="text-lg font-semibold text-foreground">知识库管理</h2>
         </div>
         <motion.button
           onClick={() => setShowCreateDialog(true)}
-          className="px-4 py-2.5 bg-[#0f766e] text-white rounded-md hover:bg-[#115e59] transition-colors flex items-center gap-2"
+          className="px-4 py-2.5 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -218,26 +178,26 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
       {/* Stats Summary */}
       {!loading && knowledgeBases.length > 0 && (
         <motion.div
-          className="flex items-center gap-6 rounded-lg border border-[#dbe3ea] bg-white p-4 shadow-sm"
+          className="flex items-center gap-6 rounded-lg border border-border bg-card p-4 shadow-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
           <div className="flex items-center gap-2">
-            <span className="text-[#64748b] text-sm">总计:</span>
-            <span className="text-[#111827] font-medium">{knowledgeBases.length} 个知识库</span>
+            <span className="text-muted-foreground text-sm">总计:</span>
+            <span className="text-foreground font-medium">{knowledgeBases.length} 个知识库</span>
           </div>
-          <div className="w-px h-4 bg-[#dbe3ea]" />
+          <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-2">
-            <span className="text-[#64748b] text-sm">文档:</span>
-            <span className="text-[#0f766e] font-medium">
+            <span className="text-muted-foreground text-sm">文档:</span>
+            <span className="text-primary font-medium">
               {knowledgeBases.reduce((sum, kb) => sum + kb.documents, 0)} 个
             </span>
           </div>
-          <div className="w-px h-4 bg-[#dbe3ea]" />
+          <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-2">
-            <span className="text-[#64748b] text-sm">Chunks:</span>
-            <span className="text-[#0f766e] font-medium">
+            <span className="text-muted-foreground text-sm">Chunks:</span>
+            <span className="text-primary font-medium">
               {knowledgeBases.reduce((sum, kb) => sum + (typeof kb.chunks === 'number' ? kb.chunks : 0), 0)} 个
             </span>
           </div>
@@ -251,27 +211,27 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#64748b]" size={20} />
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
         <input
           type="text"
           placeholder="搜索知识库..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-12 pl-12 pr-4 rounded-lg border border-[#cbd5e1] bg-white focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e] text-[#111827] placeholder-[#94a3b8] transition-all duration-200"
+          className="w-full h-12 pl-12 pr-4 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder-muted-foreground transition-all duration-200"
         />
       </motion.div>
 
       {/* Loading State */}
       {loading && (
-        <div className="text-center text-[#94a3b8] py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0f766e]"></div>
+        <div className="text-center text-muted-foreground py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)]"></div>
           <p className="mt-4">加载中...</p>
         </div>
       )}
 
       {/* Empty State */}
       {!loading && filteredKBs.length === 0 && (
-        <div className="text-center text-[#94a3b8] py-12">
+        <div className="text-center text-muted-foreground py-12">
           <Database size={48} className="mx-auto mb-4 opacity-50" />
           <p>暂无知识库</p>
         </div>
@@ -286,23 +246,23 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
             whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="rounded-lg border border-[#dbe3ea] bg-white p-6 shadow-sm transition-shadow cursor-pointer group hover:shadow-md"
+            className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow cursor-pointer group hover:shadow-md"
           >
             <div className="flex items-start gap-4">
               {/* Icon */}
-              <div className="w-12 h-12 rounded-md bg-[#eef7f4] flex items-center justify-center flex-shrink-0 text-[#0f766e]">
+              <div className="w-12 h-12 rounded-md bg-secondary flex items-center justify-center flex-shrink-0 text-primary">
                 <FileText size={23} />
               </div>
 
               {/* Content */}
               <div className="flex-1">
-                <h3 className="mb-2 text-[#111827] font-semibold group-hover:text-[#0f766e] transition-colors">{kb.name}</h3>
+                <h3 className="mb-2 text-foreground font-semibold group-hover:text-primary transition-colors">{kb.name}</h3>
                 
-                <div className="text-[#64748b] mb-4 text-sm flex items-center gap-3">
-                  <span className="px-2.5 py-1 rounded-md bg-[#eef7f4] text-[#0f766e] border border-[#cde7de]">
+                <div className="text-muted-foreground mb-4 text-sm flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-md bg-secondary text-primary border border-primary/30">
                     {kb.documents}个文档
                   </span>
-                  <span className="px-2.5 py-1 rounded-md bg-[#eef7f4] text-[#0f766e] border border-[#cde7de]">
+                  <span className="px-2.5 py-1 rounded-md bg-secondary text-primary border border-primary/30">
                     {kb.chunks} chunks
                   </span>
                   <span>更新: {kb.updated}</span>
@@ -310,16 +270,16 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
 
                 {/* Progress Bar */}
                 <div className="mb-4">
-                  <div className="flex items-center justify-between text-xs text-[#64748b] mb-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                     <span>存储使用</span>
-                    <span className="text-[#0f766e]">{kb.storageUsed}%</span>
+                    <span className="text-primary">{kb.storageUsed}%</span>
                   </div>
-                  <div className="h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${kb.storageUsed}%` }}
                       transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                      className="h-full bg-[#0f766e]"
+                      className="h-full bg-primary"
                     />
                   </div>
                 </div>
@@ -331,7 +291,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
                   onClick={() => onViewDetail(kb.collection_id)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-5 py-2.5 bg-[#0f766e] text-white rounded-md hover:bg-[#115e59] transition-colors"
+                  className="px-5 py-2.5 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
                 >
                   进入
                 </motion.button>
@@ -342,7 +302,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2.5 border border-[#ef4444] text-[#dc2626] rounded-md hover:bg-[#fef2f2] transition-colors"
+                  className="px-4 py-2.5 border border-[#ef4444] text-destructive rounded-md hover:bg-destructive/10 transition-colors"
                 >
                   <Trash2 size={18} />
                 </motion.button>
@@ -359,19 +319,19 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="w-full max-w-md mx-4 rounded-lg border border-[#dbe3ea] bg-white p-6 shadow-xl"
+            className="w-full max-w-md mx-4 rounded-lg border border-border bg-card p-6 shadow-xl"
           >
             <div>
-              <h3 className="text-xl font-semibold mb-6 text-[#111827]">新建知识库</h3>
+              <h3 className="text-xl font-semibold mb-6 text-foreground">新建知识库</h3>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-[#334155] mb-2">知识库名称</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">知识库名称</label>
                 <input
                   type="text"
                   value={newKbName}
                   onChange={(e) => setNewKbName(e.target.value)}
                   placeholder="请输入知识库名称（支持中文）"
-                  className="w-full rounded-md border border-[#cbd5e1] bg-white px-4 py-3 text-[#111827] placeholder-[#94a3b8] transition-all focus:outline-none focus:ring-2 focus:ring-[#0f766e]"
+                  className="w-full rounded-md border border-border bg-card px-4 py-3 text-foreground placeholder-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary"
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateKB()}
                   autoFocus
                 />
@@ -382,7 +342,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
                   onClick={handleCreateKB}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex-1 rounded-md bg-[#0f766e] px-6 py-3 font-medium text-white transition-colors hover:bg-[#115e59]"
+                  className="flex-1 rounded-md bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary/90"
                 >
                   创建
                 </motion.button>
@@ -393,7 +353,7 @@ export function KnowledgeBase({ onViewDetail, isV2 = false }: KnowledgeBaseProps
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex-1 rounded-md border border-[#cbd5e1] bg-white px-6 py-3 font-medium text-[#334155] transition-colors hover:bg-[#f1f5f9]"
+                  className="flex-1 rounded-md border border-border bg-card px-6 py-3 font-medium text-muted-foreground transition-colors hover:bg-secondary"
                 >
                   取消
                 </motion.button>

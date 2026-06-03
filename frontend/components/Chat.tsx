@@ -55,10 +55,9 @@ interface ChatSession {
 }
 
 interface ChatProps {
-  isV2?: boolean;
 }
 
-export function Chat({ isV2 = false }: ChatProps) {
+export function Chat({}: ChatProps) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,30 +86,9 @@ export function Chat({ isV2 = false }: ChatProps) {
         const kbResult = await safeFetchJSON(`${config.milvusApiUrl}/knowledge_base/list`);
 
         if (kbResult.status === 'success' && kbResult.knowledge_bases.length > 0) {
-          // ✅ 根据版本过滤知识库
-          // V1模式：只显示不带 _v2 后缀的
-          // V2模式：只显示带 _v2 后缀的
-          const filteredKBs = kbResult.knowledge_bases.filter((kb: KnowledgeBase) => {
-            // 修复：检查 collection_name/display_name 而不是 collection_id
-            const displayName = kb.display_name || kb.collection_id || '';
-            const isV2KB = displayName.endsWith('_v2');
-            return isV2 ? isV2KB : !isV2KB;
-          });
-          
-          // ✅ V2模式：显示名称去掉 _v2 后缀
-          const processedKBs = filteredKBs.map((kb: KnowledgeBase) => {
-            if (isV2 && kb.display_name.endsWith('_v2')) {
-              return {
-                ...kb,
-                display_name: kb.display_name.slice(0, -3)
-              };
-            }
-            return kb;
-          });
-          
-          setKnowledgeBases(processedKBs);
-          if (processedKBs.length > 0) {
-            setSelectedKB(processedKBs[0]);
+          setKnowledgeBases(kbResult.knowledge_bases);
+          if (kbResult.knowledge_bases.length > 0) {
+            setSelectedKB(kbResult.knowledge_bases[0]);
           }
         }
 
@@ -137,7 +115,7 @@ export function Chat({ isV2 = false }: ChatProps) {
     };
 
     fetchData();
-  }, [isV2]);  // ✅ 添加 isV2 依赖，版本切换时重新加载
+  }, []);
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -362,24 +340,24 @@ export function Chat({ isV2 = false }: ChatProps) {
   return (
     <div className="flex h-[calc(100vh-64px)]">
       {/* Left Sidebar */}
-      <div className="w-[280px] glass-strong border-r border-[rgba(0,212,255,0.15)] flex flex-col">
-        <div className="p-4 border-b border-[rgba(0,212,255,0.15)] flex items-center justify-between">
+      <div className="w-[280px] bg-card border border-border border-r border-[rgba(20,184,166,0.1)] flex flex-col">
+        <div className="p-4 border-b border-[rgba(20,184,166,0.1)] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[#00d4ff]" />
-            <h3 className="text-[#e8eaed]">对话历史</h3>
+            <Sparkles size={18} className="text-primary" />
+            <h3 className="text-foreground">对话历史</h3>
           </div>
           <motion.button
             onClick={handleNewChat}
-            className="w-8 h-8 rounded-lg glass hover:bg-[rgba(0,212,255,0.1)] flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-lg bg-card border border-border hover:bg-primary/10 flex items-center justify-center transition-all"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <Plus size={18} className="text-[#00d4ff]" />
+            <Plus size={18} className="text-primary" />
           </motion.button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {chatSessions.length === 0 ? (
-            <div className="text-[#94a3b8] text-sm text-center py-4">暂无历史对话</div>
+            <div className="text-muted-foreground text-sm text-center py-4">暂无历史对话</div>
           ) : (
             chatSessions.map(session => (
               <motion.div
@@ -387,8 +365,8 @@ export function Chat({ isV2 = false }: ChatProps) {
                 onClick={() => loadSession(session)}
                 className={`p-3 rounded-lg cursor-pointer transition-all group ${
                   currentSessionId === session.id
-                    ? 'bg-[rgba(0,212,255,0.15)] border border-[rgba(0,212,255,0.3)]'
-                    : 'glass hover:bg-[rgba(0,212,255,0.1)]'
+                    ? 'bg-[rgba(20,184,166,0.1)] border border-[rgba(20,184,166,0.2)]'
+                    : 'bg-card border border-border hover:bg-primary/10'
                 }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -396,15 +374,15 @@ export function Chat({ isV2 = false }: ChatProps) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <MessageSquare size={14} className="text-[#00d4ff] flex-shrink-0" />
-                      <p className="text-[#e8eaed] text-sm font-medium truncate">
+                      <MessageSquare size={14} className="text-primary flex-shrink-0" />
+                      <p className="text-foreground text-sm font-medium truncate">
                         {session.title}
                       </p>
                     </div>
-                    <p className="text-[#94a3b8] text-xs truncate">
+                    <p className="text-muted-foreground text-xs truncate">
                       {session.knowledgeBaseName} • {session.messages.length}条消息
                     </p>
-                    <p className="text-[#64748b] text-xs mt-1">
+                    <p className="text-muted-foreground text-xs mt-1">
                       {new Date(session.updatedAt).toLocaleString('zh-CN', {
                         month: 'numeric',
                         day: 'numeric',
@@ -429,9 +407,9 @@ export function Chat({ isV2 = false }: ChatProps) {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-[rgba(10,14,39,0.3)]">
+      <div className="flex-1 flex flex-col bg-background/50">
         {/* Top Bar */}
-        <div className="h-16 glass border-b border-[rgba(0,212,255,0.15)] px-6 flex items-center justify-between">
+        <div className="h-16 bg-card border border-border border-b border-[rgba(20,184,166,0.1)] px-6 flex items-center justify-between">
           <div className="relative">
             <select
               value={selectedKB?.collection_id || ''}
@@ -439,7 +417,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                 const kb = knowledgeBases.find(k => k.collection_id === e.target.value);
                 setSelectedKB(kb || null);
               }}
-              className="px-4 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl text-[#e8eaed] appearance-none pr-10 cursor-pointer hover:bg-[rgba(0,212,255,0.1)] transition-all focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+              className="px-4 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl text-foreground appearance-none pr-10 cursor-pointer hover:bg-primary/10 transition-all focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {knowledgeBases.length === 0 && <option value="">暂无知识库</option>}
               {knowledgeBases.map(kb => (
@@ -448,19 +426,19 @@ export function Chat({ isV2 = false }: ChatProps) {
                 </option>
               ))}
             </select>
-            <ChevronDown size={16} className="text-[#00d4ff] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={16} className="text-primary absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-[#94a3b8] text-sm">
+            <div className="text-muted-foreground text-sm">
               {messages.length > 0 && `${messages.length} 条消息`}
             </div>
             <motion.button
               onClick={() => setShowSettings(!showSettings)}
-              className="w-9 h-9 rounded-lg glass hover:bg-[rgba(0,212,255,0.1)] flex items-center justify-center transition-all"
+              className="w-9 h-9 rounded-lg bg-card border border-border hover:bg-primary/10 flex items-center justify-center transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Settings size={18} className={`${showSettings ? 'text-[#00d4ff]' : 'text-[#94a3b8]'} transition-colors`} />
+              <Settings size={18} className={`${showSettings ? 'text-primary' : 'text-muted-foreground'} transition-colors`} />
             </motion.button>
           </div>
         </div>
@@ -469,11 +447,11 @@ export function Chat({ isV2 = false }: ChatProps) {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center mb-6 animate-pulse-glow">
-                <Bot size={48} className="text-[#0a0e27]" />
+              <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mb-6">
+                <Bot size={48} className="text-primary-foreground" />
               </div>
-              <h2 className="text-2xl text-gradient mb-3">开始新对话</h2>
-              <p className="text-[#94a3b8] max-w-md">
+              <h2 className="text-2xl text-primary mb-3">开始新对话</h2>
+              <p className="text-muted-foreground max-w-md">
                 {selectedKB ? `已选择知识库「${selectedKB.display_name}」，现在可以向我提问了` : '请先选择一个知识库，然后开始对话'}
               </p>
             </div>
@@ -488,56 +466,56 @@ export function Chat({ isV2 = false }: ChatProps) {
                 >
                   {msg.role === 'assistant' ? (
                     <div className="flex gap-3 items-start">
-                      <motion.div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00d4ff] to-[#0066ff] flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <Bot size={22} className="text-[#0a0e27]" />
+                      <motion.div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <Bot size={22} className="text-primary-foreground" />
                       </motion.div>
                       <div className="flex-1 max-w-[70%]">
-                        <motion.div className="glass-strong rounded-2xl p-5 shadow-lg border border-[rgba(0,212,255,0.2)]">
-                          <div className="prose prose-invert max-w-none text-[#e8eaed]">
+                        <motion.div className="bg-card border border-border rounded-2xl p-5 shadow-lg border border-[rgba(20,184,166,0.15)]">
+                          <div className="prose prose-invert max-w-none text-foreground">
                             <ReactMarkdown
                               components={{
-                                h1: ({node, ...props}) => <h1 className="text-xl text-gradient mb-3" {...props} />,
-                                h2: ({node, ...props}) => <h2 className="text-lg text-[#00d4ff] mb-2" {...props} />,
-                                h3: ({node, ...props}) => <h3 className="text-base text-[#00d4ff] mb-2" {...props} />,
-                                p: ({node, ...props}) => <p className="text-[#e8eaed] mb-2 leading-relaxed" {...props} />,
-                                ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1 text-[#e8eaed] mb-2" {...props} />,
-                                ol: ({node, ...props}) => <ol className="list-decimal list-inside space-y-1 text-[#e8eaed] mb-2" {...props} />,
-                                li: ({node, ...props}) => <li className="text-[#e8eaed]" {...props} />,
-                                strong: ({node, ...props}) => <strong className="text-[#00d4ff] font-semibold" {...props} />,
-                                em: ({node, ...props}) => <em className="text-[#00ff88] italic" {...props} />,
+                                h1: ({node, ...props}) => <h1 className="text-xl text-primary mb-3" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="text-lg text-primary mb-2" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="text-base text-primary mb-2" {...props} />,
+                                p: ({node, ...props}) => <p className="text-foreground mb-2 leading-relaxed" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1 text-foreground mb-2" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal list-inside space-y-1 text-foreground mb-2" {...props} />,
+                                li: ({node, ...props}) => <li className="text-foreground" {...props} />,
+                                strong: ({node, ...props}) => <strong className="text-primary font-semibold" {...props} />,
+                                em: ({node, ...props}) => <em className="text-success italic" {...props} />,
                                 code: ({node, ...props}) => (
-                                  <code className="bg-[rgba(0,212,255,0.1)] text-[#00ff88] px-1.5 py-0.5 rounded text-sm" {...props} />
+                                  <code className="bg-[rgba(20,184,166,0.08)] text-success px-1.5 py-0.5 rounded text-sm" {...props} />
                                 ),
                                 pre: ({node, ...props}) => (
-                                  <pre className="bg-[rgba(0,212,255,0.1)] p-3 rounded-xl overflow-x-auto my-2" {...props} />
+                                  <pre className="bg-[rgba(20,184,166,0.08)] p-3 rounded-xl overflow-x-auto my-2" {...props} />
                                 ),
                                 blockquote: ({node, ...props}) => (
-                                  <blockquote className="border-l-4 border-[#00d4ff] pl-4 py-2 my-2 text-[#94a3b8] italic" {...props} />
+                                  <blockquote className="border-l-4 border-primary pl-4 py-2 my-2 text-muted-foreground italic" {...props} />
                                 ),
                                 table: ({node, ...props}) => (
-                                  <table className="w-full border border-[rgba(0,212,255,0.2)] rounded-lg my-2" {...props} />
+                                  <table className="w-full border border-[rgba(20,184,166,0.15)] rounded-lg my-2" {...props} />
                                 ),
                                 th: ({node, ...props}) => (
-                                  <th className="border border-[rgba(0,212,255,0.2)] px-3 py-2 bg-[rgba(0,212,255,0.1)] text-[#00d4ff]" {...props} />
+                                  <th className="border border-[rgba(20,184,166,0.15)] px-3 py-2 bg-[rgba(20,184,166,0.08)] text-primary" {...props} />
                                 ),
                                 td: ({node, ...props}) => (
-                                  <td className="border border-[rgba(0,212,255,0.2)] px-3 py-2 text-[#e8eaed]" {...props} />
+                                  <td className="border border-[rgba(20,184,166,0.15)] px-3 py-2 text-foreground" {...props} />
                                 ),
                                 hr: ({node, ...props}) => (
-                                  <hr className="my-4 border-t border-[rgba(0,212,255,0.3)]" {...props} />
+                                  <hr className="my-4 border-t border-[rgba(20,184,166,0.2)]" {...props} />
                                 ),
                               }}
                             >
                               {msg.content}
                             </ReactMarkdown>
-                            {msg.isStreaming && <span className="inline-block w-2 h-5 bg-[#00d4ff] ml-1 animate-pulse" />}
+                            {msg.isStreaming && <span className="inline-block w-2 h-5 bg-primary ml-1 animate-pulse" />}
                           </div>
                         </motion.div>
                         {msg.sources && msg.sources.length > 0 && (
                           <div className="mt-3">
                             <motion.button
                               onClick={() => setExpandedCitation(expandedCitation === msg.id ? null : msg.id)}
-                              className="text-[#00d4ff] text-sm flex items-center gap-1 px-3 py-1.5 glass rounded-lg border border-[rgba(0,212,255,0.2)]"
+                              className="text-primary text-sm flex items-center gap-1 px-3 py-1.5 bg-card border border-border rounded-lg border border-[rgba(20,184,166,0.15)]"
                             >
                               📚 引用来源 [{msg.sources.length}个]
                               <ChevronDown size={14} className={`transition-transform ${expandedCitation === msg.id ? 'rotate-180' : ''}`} />
@@ -545,34 +523,34 @@ export function Chat({ isV2 = false }: ChatProps) {
                             {expandedCitation === msg.id && (
                               <div className="mt-3 space-y-2">
                                 {msg.sources.map((source, idx) => (
-                                  <div key={idx} className="glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl p-4 text-sm">
+                                  <div key={idx} className="bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl p-4 text-sm">
                                     <div className="flex items-center gap-2 mb-2">
-                                      <span className="text-[#e8eaed]">📄 {source.filename}</span>
+                                      <span className="text-foreground">📄 {source.filename}</span>
                                     </div>
                                     <div className="flex gap-2 mb-3">
-                                      <span className="px-2 py-1 bg-[rgba(0,212,255,0.1)] text-[#00d4ff] rounded-lg text-xs">
+                                      <span className="px-2 py-1 bg-[rgba(20,184,166,0.08)] text-primary rounded-lg text-xs">
                                         相似度: {source.score.toFixed(3)}
                                       </span>
                                     </div>
-                                    <div className="text-[#94a3b8] text-xs line-clamp-3">{source.chunk_text}</div>
+                                    <div className="text-muted-foreground text-xs line-clamp-3">{source.chunk_text}</div>
                                   </div>
                                 ))}
                               </div>
                             )}
                           </div>
                         )}
-                        <div className="text-[#94a3b8] text-xs mt-2">{msg.timestamp}</div>
+                        <div className="text-muted-foreground text-xs mt-2">{msg.timestamp}</div>
                       </div>
                     </div>
                   ) : (
                     <div className="flex gap-3 items-start justify-end">
                       <div className="max-w-[70%]">
-                        <div className="bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] rounded-2xl p-5 shadow-lg">
+                        <div className="bg-primary text-primary-foreground rounded-2xl p-5 shadow-lg">
                           <p className="whitespace-pre-wrap">{msg.content}</p>
                         </div>
-                        <div className="text-[#94a3b8] text-xs mt-2 text-right">{msg.timestamp}</div>
+                        <div className="text-muted-foreground text-xs mt-2 text-right">{msg.timestamp}</div>
                       </div>
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-chart-5 to-chart-5 flex items-center justify-center flex-shrink-0 shadow-lg">
                         <User size={22} className="text-white" />
                       </div>
                     </div>
@@ -592,23 +570,23 @@ export function Chat({ isV2 = false }: ChatProps) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="glass-strong border-t border-[rgba(0,212,255,0.15)] overflow-hidden"
+              className="bg-card border border-border border-t border-[rgba(20,184,166,0.1)] overflow-hidden"
             >
               <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[#e8eaed] font-medium flex items-center gap-2">
-                    <Settings size={16} className="text-[#00d4ff]" />
+                  <h3 className="text-foreground font-medium flex items-center gap-2">
+                    <Settings size={16} className="text-primary" />
                     模型配置
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">模型选择</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">模型选择</label>
                     <select
                       value={llmConfig.model_name}
                       onChange={(e) => setLLMConfig({...llmConfig, model_name: e.target.value})}
-                      className="w-full px-3 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-lg text-[#e8eaed] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       {availableModels.map(model => (
                         <option key={model.name} value={model.name}>
@@ -619,7 +597,7 @@ export function Chat({ isV2 = false }: ChatProps) {
                   </div>
 
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">Temperature: {llmConfig.temperature}</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">Temperature: {llmConfig.temperature}</label>
                     <input
                       type="range"
                       min="0"
@@ -629,14 +607,14 @@ export function Chat({ isV2 = false }: ChatProps) {
                       onChange={(e) => setLLMConfig({...llmConfig, temperature: parseFloat(e.target.value)})}
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs text-[#94a3b8] mt-1">
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
                       <span>精确</span>
                       <span>创造</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">最大Token数</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">最大Token数</label>
                     <input
                       type="number"
                       min="100"
@@ -644,23 +622,23 @@ export function Chat({ isV2 = false }: ChatProps) {
                       step="100"
                       value={llmConfig.max_tokens}
                       onChange={(e) => setLLMConfig({...llmConfig, max_tokens: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-lg text-[#e8eaed] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[#94a3b8] text-sm mb-2 block">API Key</label>
+                    <label className="text-muted-foreground text-sm mb-2 block">API Key</label>
                     <input
                       type="password"
                       value={llmConfig.api_key}
                       onChange={(e) => setLLMConfig({...llmConfig, api_key: e.target.value})}
                       placeholder="sk-xxxxxxxxxxxx"
-                      className="w-full px-3 py-2 glass-strong border border-[rgba(0,212,255,0.2)] rounded-lg text-[#e8eaed] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      className="w-full px-3 py-2 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
 
-                <div className="pt-2 text-xs text-[#94a3b8]">
+                <div className="pt-2 text-xs text-muted-foreground">
                   💡 提示：调整参数后立即生效，无需重启
                 </div>
               </div>
@@ -669,7 +647,7 @@ export function Chat({ isV2 = false }: ChatProps) {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="glass-strong border-t border-[rgba(0,212,255,0.15)] p-4">
+        <div className="bg-card border border-border border-t border-[rgba(20,184,166,0.1)] p-4">
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <textarea
@@ -678,17 +656,17 @@ export function Chat({ isV2 = false }: ChatProps) {
                 onKeyPress={handleKeyPress}
                 placeholder={selectedKB ? '💬 输入你的问题...' : '⚠️ 请先选择知识库'}
                 disabled={!selectedKB || isLoading}
-                className="w-full min-h-[56px] max-h-[200px] px-4 py-3 glass-strong border border-[rgba(0,212,255,0.2)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00d4ff] resize-none text-[#e8eaed] placeholder-[#94a3b8] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full min-h-[56px] max-h-[200px] px-4 py-3 bg-card border border-border border border-[rgba(20,184,166,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary resize-none text-foreground placeholder-muted-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={1}
               />
-              <div className="absolute bottom-3 right-3 text-xs text-[#94a3b8]">
+              <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
                 {message.length}/2000
               </div>
             </div>
             <motion.button
               onClick={handleSendMessage}
               disabled={!message.trim() || isLoading || !selectedKB}
-              className="w-14 h-14 rounded-xl bg-gradient-to-r from-[#00d4ff] to-[#0066ff] text-[#0a0e27] flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="w-14 h-14 rounded-xl bg-primary text-primary-foreground flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               whileHover={!isLoading && message.trim() && selectedKB ? { scale: 1.05 } : {}}
               whileTap={!isLoading && message.trim() && selectedKB ? { scale: 0.95 } : {}}
             >
