@@ -16,7 +16,73 @@ It does not start Docker, manage Milvus, read API keys, call GPU OCR services, o
 
 ```bash
 backend/agent_tools/rag_ocr_agent_tool.py
+backend/agent_tools/tool_service.py
 ```
+
+## HTTP Tool Service
+
+For agents that prefer HTTP over shell execution, run the tool service:
+
+```bash
+python backend/agent_tools/tool_service.py --host 127.0.0.1 --port 8765
+```
+
+The service is a thin adapter over `rag_ocr_agent_tool.py`; extraction and chunking logic stays in the existing wrapper.
+
+### Service Health
+
+```bash
+curl http://127.0.0.1:8765/health
+```
+
+Returns:
+
+```json
+{
+  "status": "ok",
+  "service": "rag-ocr-agent-tool-service",
+  "tools": ["rag-ocr"]
+}
+```
+
+### RAG-OCR Stack Health
+
+```bash
+curl -X POST http://127.0.0.1:8765/tools/rag-ocr/healthcheck \
+  -H 'Content-Type: application/json' \
+  -d '{"timeout_seconds": 5}'
+```
+
+### Extract And Chunk One Local PDF
+
+```bash
+curl -X POST http://127.0.0.1:8765/tools/rag-ocr/extract-policy \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "pdf_path": "/path/to/policy.pdf",
+    "output_dir": "/path/to/output-dir",
+    "timeout_seconds": 30
+  }'
+```
+
+The HTTP service returns the same artifact summary as the CLI wrapper.
+
+### Service Configuration
+
+Set defaults with environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `RAG_OCR_AGENT_PDF_URL` | PDF extraction service base URL |
+| `RAG_OCR_AGENT_CHUNK_URL` | Text chunking service base URL |
+| `RAG_OCR_AGENT_MILVUS_URL` | Milvus API base URL |
+| `RAG_OCR_AGENT_CHAT_URL` | Chat service base URL |
+| `RAG_OCR_AGENT_TIMEOUT_SECONDS` | Default upstream timeout |
+| `RAG_OCR_TOOL_OUTPUT_DIR` | Default extraction artifact directory |
+| `RAG_OCR_TOOL_HOST` | Tool service bind host |
+| `RAG_OCR_TOOL_PORT` | Tool service port |
+
+Request JSON fields override environment defaults for that call.
 
 ## Required Services
 
