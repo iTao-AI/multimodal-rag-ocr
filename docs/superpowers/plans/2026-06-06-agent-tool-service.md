@@ -2,13 +2,13 @@
 
 **Goal:** Productize the existing RAG-OCR agent CLI wrapper into a configurable HTTP tool service.
 
-**Architecture:** Keep `rag_ocr_agent_tool.py` as the source of extraction and healthcheck behavior. Add `tool_service.py` as a thin FastAPI adapter with environment defaults, request overrides, structured errors, and a small CLI for local startup.
+**Architecture:** Keep `rag_ocr_agent_tool.py` as the source of extraction and healthcheck behavior. Add `tool_service.py` as a thin FastAPI adapter with authenticated tool endpoints, server-controlled upstream URLs, constrained filesystem roots, structured errors, and a small CLI for local startup.
 
 ## Task 1: RED Tests
 
 - [x] Add `backend/tests/test_agent_tool_service.py`.
 - [x] Test `GET /health` exposes service readiness and non-secret config.
-- [x] Test `POST /tools/rag-ocr/healthcheck` forwards config overrides to `check_services`.
+- [x] Test `POST /tools/rag-ocr/healthcheck` forwards timeout overrides to `check_services`.
 - [x] Test `POST /tools/rag-ocr/extract-policy` forwards PDF path, output directory, and config to `extract_policy`.
 - [x] Test `AgentToolError` returns HTTP 400 with `status=failed`.
 - [x] Run the focused test and confirm it fails because `tool_service.py` is missing.
@@ -16,8 +16,9 @@
 ## Task 2: GREEN Service
 
 - [x] Create `backend/agent_tools/tool_service.py`.
-- [x] Define Pydantic request models for config overrides and extraction.
-- [x] Build `ToolConfig` from environment defaults plus request overrides.
+- [x] Define strict Pydantic request models for timeout overrides and extraction.
+- [x] Build `ToolConfig` from server-controlled environment defaults plus timeout overrides.
+- [x] Require API-key authentication and constrain input/output paths.
 - [x] Add `GET /health`.
 - [x] Add `POST /tools/rag-ocr/healthcheck`.
 - [x] Add `POST /tools/rag-ocr/extract-policy`.

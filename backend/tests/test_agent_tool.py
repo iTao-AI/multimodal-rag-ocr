@@ -128,6 +128,18 @@ def test_extract_policy_rejects_missing_pdf(tmp_path):
         )
 
 
+def test_extract_policy_rejects_non_pdf_file(tmp_path):
+    source = tmp_path / "secret.txt"
+    source.write_text("not a pdf", encoding="utf-8")
+
+    with pytest.raises(tool.AgentToolError, match="valid PDF"):
+        tool.extract_policy(
+            pdf_path=source,
+            output_dir=tmp_path / "out",
+            config=tool.ToolConfig(),
+        )
+
+
 def test_extract_policy_rejects_missing_markdown(tmp_path, monkeypatch):
     pdf = tmp_path / "policy.pdf"
     pdf.write_bytes(b"%PDF-1.4 demo")

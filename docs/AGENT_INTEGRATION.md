@@ -10,7 +10,7 @@ The wrapper is intentionally narrow:
 - write deterministic artifacts;
 - return machine-readable JSON.
 
-It does not start Docker, manage Milvus, read API keys, call GPU OCR services, or insert documents into a vector database.
+It does not start Docker, manage Milvus, read backend-service credentials, call GPU OCR services, or insert documents into a vector database.
 
 ## Location
 
@@ -28,6 +28,7 @@ python backend/agent_tools/tool_service.py --host 127.0.0.1 --port 8765
 ```
 
 The service is a thin adapter over `rag_ocr_agent_tool.py`; extraction and chunking logic stays in the existing wrapper.
+Set `RAG_OCR_TOOL_API_KEY` before starting it. All `/tools/*` requests must send the same value in `X-API-Key`.
 
 ### Service Health
 
@@ -50,6 +51,7 @@ Returns:
 ```bash
 curl -X POST http://127.0.0.1:8765/tools/rag-ocr/healthcheck \
   -H 'Content-Type: application/json' \
+  -H "X-API-Key: $RAG_OCR_TOOL_API_KEY" \
   -d '{"timeout_seconds": 5}'
 ```
 
@@ -58,6 +60,7 @@ curl -X POST http://127.0.0.1:8765/tools/rag-ocr/healthcheck \
 ```bash
 curl -X POST http://127.0.0.1:8765/tools/rag-ocr/extract-policy \
   -H 'Content-Type: application/json' \
+  -H "X-API-Key: $RAG_OCR_TOOL_API_KEY" \
   -d '{
     "pdf_path": "/path/to/policy.pdf",
     "output_dir": "/path/to/output-dir",
@@ -79,10 +82,12 @@ Set defaults with environment variables:
 | `RAG_OCR_AGENT_CHAT_URL` | Chat service base URL |
 | `RAG_OCR_AGENT_TIMEOUT_SECONDS` | Default upstream timeout |
 | `RAG_OCR_TOOL_OUTPUT_DIR` | Default extraction artifact directory |
+| `RAG_OCR_TOOL_INPUT_ROOT` | Allowed root for input PDFs, default current directory |
+| `RAG_OCR_TOOL_API_KEY` | Required API key for `/tools/*` requests |
 | `RAG_OCR_TOOL_HOST` | Tool service bind host |
 | `RAG_OCR_TOOL_PORT` | Tool service port |
 
-Request JSON fields override environment defaults for that call.
+Request JSON may override only `timeout_seconds`. Upstream service URLs are server-controlled environment configuration and cannot be changed per request.
 
 ## Required Services
 
@@ -153,7 +158,7 @@ The command exits with:
 - `0` when extraction and chunking both succeed;
 - `1` when input validation, extraction, chunking, or JSON parsing fails.
 
-## URL Overrides
+## CLI URL Overrides
 
 Use these flags when services run on non-default ports:
 
@@ -186,5 +191,8 @@ It never falls back to empty markdown, random vectors, or guessed outputs.
 - The wrapper does not read `.env`.
 - It does not print API keys or tokens.
 - It does not send API keys to the frontend.
-- It writes artifacts only to the caller-provided output directory.
+- The HTTP service requires `X-API-Key` for every `/tools/*` request.
+- The HTTP service reads PDFs only below `RAG_OCR_TOOL_INPUT_ROOT`.
+- The HTTP service writes artifacts only below `RAG_OCR_TOOL_OUTPUT_DIR`.
+- The HTTP service rejects request-level upstream URL overrides.
 - All service credentials remain server-side in the existing backend services.

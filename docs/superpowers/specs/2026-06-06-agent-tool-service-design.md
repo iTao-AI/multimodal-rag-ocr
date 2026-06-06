@@ -13,7 +13,7 @@ The service should let an upper-layer agent:
 - check whether the tool service itself is reachable;
 - check the RAG-OCR backend service stack;
 - run PDF extraction/chunking for a local PDF path;
-- override backend URLs and timeout per request;
+- override timeout per request;
 - set safe defaults through environment variables;
 - receive machine-readable JSON errors without secrets.
 
@@ -21,7 +21,7 @@ The service should let an upper-layer agent:
 
 - No Docker, Milvus, or backend service startup orchestration.
 - No OpenClaw-specific private paths in public documentation.
-- No API key, token, cookie, or `.env` access.
+- No token, cookie, or `.env` access.
 - No vector database insertion.
 - No broad plugin registry in this phase.
 - No frontend changes.
@@ -36,15 +36,17 @@ Endpoints:
   - Returns service process health and default configuration metadata.
 
 - `POST /tools/rag-ocr/healthcheck`
-  - Body may include URL and timeout overrides.
+  - Requires `X-API-Key`.
+  - Body may include a timeout override.
   - Calls `rag_ocr_agent_tool.check_services`.
   - Returns the existing wrapper result.
 
 - `POST /tools/rag-ocr/extract-policy`
+  - Requires `X-API-Key`.
   - Body fields:
     - `pdf_path`: required local PDF path.
     - `output_dir`: optional output directory; defaults to `RAG_OCR_TOOL_OUTPUT_DIR` or `agent-tool-output`.
-    - URL and timeout overrides.
+    - timeout override.
   - Calls `rag_ocr_agent_tool.extract_policy`.
   - Returns the existing wrapper summary.
 
@@ -57,9 +59,11 @@ Environment variables:
 - `RAG_OCR_AGENT_MILVUS_URL`
 - `RAG_OCR_AGENT_CHAT_URL`
 - `RAG_OCR_AGENT_TIMEOUT_SECONDS`
+- `RAG_OCR_TOOL_API_KEY`
+- `RAG_OCR_TOOL_INPUT_ROOT`
 - `RAG_OCR_TOOL_OUTPUT_DIR`
 
-Request-level values override environment defaults. Empty request fields are ignored.
+Upstream URLs remain server-controlled. Request-level URL overrides are rejected. Input and output paths must remain inside their configured roots.
 
 ## Error Handling
 
@@ -74,8 +78,10 @@ Add `backend/tests/test_agent_tool_service.py` using FastAPI `TestClient`.
 Tests cover:
 
 - service health returns configured defaults;
-- healthcheck endpoint passes overrides into the wrapper;
+- tool endpoints require API-key authentication;
+- healthcheck endpoint passes timeout overrides into the wrapper and rejects URL overrides;
 - extract endpoint passes PDF path, output directory, and config into the wrapper;
+- paths outside configured roots and non-PDF input are rejected;
 - missing PDF or wrapper errors return structured HTTP `400`.
 
 ## Success Criteria

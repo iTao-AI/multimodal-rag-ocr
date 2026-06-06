@@ -150,6 +150,10 @@ def extract_policy(pdf_path: Path | str, output_dir: Path | str, config: ToolCon
         raise AgentToolError(f"PDF does not exist: {pdf}")
     if not pdf.is_file():
         raise AgentToolError(f"PDF path is not a file: {pdf}")
+    with pdf.open("rb") as pdf_file:
+        signature = pdf_file.read(5)
+    if pdf.suffix.lower() != ".pdf" or signature != b"%PDF-":
+        raise AgentToolError(f"input is not a valid PDF: {pdf}")
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
