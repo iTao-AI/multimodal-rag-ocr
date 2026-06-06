@@ -113,6 +113,15 @@
     font-size: 13px;
     line-height: 1.5;
   }
+
+  .theme-v2:not(.professional-app) .text-sm,
+  .theme-v2:not(.professional-app) small {
+    color: #1a1a1a;
+  }
+
+  .theme-v2:not(.professional-app) button {
+    color: #1a1a1a;
+  }
 }
 
 html {

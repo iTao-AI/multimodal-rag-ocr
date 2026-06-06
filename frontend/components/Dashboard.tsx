@@ -84,9 +84,10 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
   }, []);
 
   const quickActions = [
-    { id: 'upload', label: '上传文档', icon: Upload, onClick: () => setShowUploadDialog(true), variant: 'primary' as const },
-    { id: 'knowledge', label: '管理知识库', icon: Layers3, onClick: () => onNavigate?.('knowledge'), variant: 'secondary' as const },
-    { id: 'chat', label: '开始对话', icon: MessageSquare, onClick: () => onNavigate?.('chat'), variant: 'tertiary' as const },
+    { id: 1, label: '上传文档', icon: Upload, onClick: () => setShowUploadDialog(true), variant: 'primary' as const },
+    { id: 2, label: '管理知识库', icon: Layers3, onClick: () => onNavigate?.('knowledge'), variant: 'secondary' as const },
+    { id: 3, label: '检索测试', icon: Search, onClick: () => onNavigate?.('retrieval'), variant: 'secondary' as const },
+    { id: 4, label: '开始对话', icon: MessageSquare, onClick: () => onNavigate?.('chat'), variant: 'tertiary' as const },
   ];
 
   const variantStyles = {
@@ -156,7 +157,13 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
             return (
               <motion.button
                 key={action.id}
-                onClick={action.onClick}
+                onClick={() => {
+                  if (action.id === 3 && onNavigate) {
+                    onNavigate('retrieval');
+                    return;
+                  }
+                  action.onClick();
+                }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${variantStyles[action.variant]}`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}

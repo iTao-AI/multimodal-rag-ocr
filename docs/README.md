@@ -14,7 +14,8 @@ Multimodal RAG OCR 项目文档集。按阅读顺序排列。
 | 2 | [API 参考](./API_REFERENCE.md) | 前后端开发者 | 10 min |
 | 3 | [开发指南](./DEV_GUIDE.md) | 搭建环境/写代码的人 | 15 min |
 | 4 | [算法详解](./ALGORITHM_DEEP_DIVE.md) | 想深入理解核心逻辑的人 | 30 min |
-| 5 | [改进路线图](./ROADMAP.md) | 计划改进项目的人 | 10 min |
+| 5 | [Agent Integration](./AGENT_INTEGRATION.md) | 集成上层 Agent / 自动化脚本的人 | 10 min |
+| 6 | [改进路线图](./ROADMAP.md) | 计划改进项目的人 | 10 min |
 
 ## V2.1 新增内容
 
@@ -39,6 +40,7 @@ Multimodal RAG OCR 项目文档集。按阅读顺序排列。
 | 上传一个 PDF 的全流程 | [项目概览 → 第三节](./PROJECT_OVERVIEW.md#三核心数据流) |
 | 某个 API 怎么调用 | [API 参考](./API_REFERENCE.md) |
 | 怎么启动服务 | [开发指南 → 第二节](./DEV_GUIDE.md#二启动服务) |
+| 怎么让上层 Agent 调用 RAG-OCR | [Agent Integration](./AGENT_INTEGRATION.md) |
 | 文本切分算法细节 | [算法详解 → 第一节](./ALGORITHM_DEEP_DIVE.md#一header-recursive-文本切分算法) |
 | Reranker 怎么工作 | [算法详解 → 第二节](./ALGORITHM_DEEP_DIVE.md#二reranker-算法) |
 | 向量检索和 Embedding | [算法详解 → 第三节](./ALGORITHM_DEEP_DIVE.md#三向量检索与-embedding) |
