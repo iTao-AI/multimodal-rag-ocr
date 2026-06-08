@@ -366,6 +366,8 @@
     "base_url": "https://api.jina.ai/v1"
   },
   "top_k": 5,
+  "score_threshold": 0.3,
+  "min_confidence_threshold": 0.5,
   "file_name": "",
   "filter_expr": "",
   "history": [
@@ -382,6 +384,8 @@
 | `llm_config` | object | 否 | LLM 配置（不传则用后端默认） |
 | `rerank_config` | object | 否 | Rerank 配置（不传则跳过） |
 | `top_k` | int | 否 | 检索数量，默认 5 |
+| `score_threshold` | number | 否 | 召回过滤阈值 |
+| `min_confidence_threshold` | number | 否 | 回答门禁阈值；不传时复用 `score_threshold` |
 | `file_name` | string | 否 | 限定文件名 |
 | `filter_expr` | string | 否 | Milvus 过滤表达式 |
 | `history` | array | 否 | 对话历史 |
@@ -397,11 +401,24 @@
       "score": 0.92
     }
   ],
+  "quality_report": {
+    "status": "passed",
+    "document_count": 5,
+    "source_count": 2,
+    "max_score": 0.92,
+    "avg_score": 0.76,
+    "score_threshold": 0.3,
+    "min_confidence_threshold": 0.5,
+    "issues": []
+  },
   "total_tokens": 1234,
   "latency_ms": 567,
-  "cache_hit": false
+  "cache_hit": false,
+  "answer_status": "answered"
 }
 ```
+
+当 `quality_report.status` 为 `rejected` 时，对话服务返回拒答文本并跳过 LLM 调用；常见原因包括未召回文档或最高分低于 `min_confidence_threshold`。`metadata.answer_status` 会同步标记为 `rejected`，正常回答则为 `answered`。
 
 ### 5.2 POST /chat/stream
 
@@ -411,12 +428,13 @@
 
 **响应** (`text/event-stream`，每行一个 JSON):
 ```
-{"type": "content", "content": "机器"}
-{"type": "content", "content": "学习是"}
-{"type": "content", "content": "人工智能的"}
-{"type": "content", "content": "一个分支..."}
-{"type": "sources", "sources": [{"chunk_text": "...", "file_name": "...", "score": 0.92}]}
-{"type": "metadata", {"rewrite_time": 0.5, "retrieve_time": 1.2, "rerank_time": 0.0, "hybrid_time": 0.1, "llm_time": 2.3, "total_time": 4.1, "documents_count": 5, "cache_hit": false}}
+{"type": "content", "data": "机器"}
+{"type": "content", "data": "学习是"}
+{"type": "content", "data": "人工智能的"}
+{"type": "content", "data": "一个分支..."}
+{"type": "sources", "data": [{"chunk_text": "...", "filename": "AI入门.pdf", "score": 0.92}]}
+{"type": "quality_report", "data": {"status": "passed", "document_count": 5, "max_score": 0.92, "min_confidence_threshold": 0.5, "issues": []}}
+{"type": "metadata", "data": {"rewrite_time": 0.5, "retrieve_time": 1.2, "rerank_time": 0.0, "hybrid_time": 0.1, "llm_time": 2.3, "total_time": 4.1, "documents_count": 5, "cache_hit": false, "answer_status": "answered"}}
 ```
 
 出错时:
