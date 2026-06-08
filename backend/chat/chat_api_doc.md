@@ -68,6 +68,7 @@ RAG对话接口，支持流式和非流式两种模式。
 | llm_config | object | 是 | 大语言模型配置 |
 | top_k | integer | 否 | 召回文档数量，默认为5 |
 | score_threshold | number | 否 | 召回文档的相似度阈值，默认为0.3 |
+| min_confidence_threshold | number | 否 | 回答门禁阈值；不传时复用 score_threshold |
 | stream | boolean | 否 | 是否使用流式响应，默认为False |
 | return_source | boolean | 否 | 是否返回来源文档，默认为True |
 | use_reranker | boolean | 否 | 是否使用重排序，默认为False |
@@ -115,9 +116,21 @@ RAG对话接口，支持流式和非流式两种模式。
       "chunk_text": "文档片段内容...",
       "filename": "source_file.pdf",
       "score": 0.85,
+      "retrieval_score": 0.82,
+      "rerank_score": null,
       "metadata": {}
     }
   ],
+  "quality_report": {
+    "status": "passed",
+    "document_count": 5,
+    "source_count": 2,
+    "max_score": 0.85,
+    "avg_score": 0.72,
+    "score_threshold": 0.3,
+    "min_confidence_threshold": 0.3,
+    "issues": []
+  },
   "metadata": {
     "retrieve_time": 0.5,
     "rerank_time": 0.2,
@@ -134,8 +147,11 @@ RAG对话接口，支持流式和非流式两种模式。
 
 - 内容片段: `{"type": "content", "data": "..."}`
 - 来源文档: `{"type": "sources", "data": [...]}`
+- 文档质量: `{"type": "quality_report", "data": {...}}`
 - 元数据: `{"type": "metadata", "data": {...}}`
 - 错误信息: `{"type": "error", "data": {...}}`
+
+当 `quality_report.status` 为 `rejected` 时，服务返回固定拒答文本并跳过 LLM 调用；常见原因包括未召回文档或最高分低于 `min_confidence_threshold`。
 
 ## 使用示例
 
@@ -159,6 +175,7 @@ response = requests.post(
         },
         "top_k": 5,
         "score_threshold": 0.3,
+        "min_confidence_threshold": 0.5,
         "stream": False,
         "return_source": True
     }
@@ -263,4 +280,3 @@ python kb_chat.py
 服务默认监听在 `0.0.0.0:8501`，可以通过环境变量 `SERVER_HOST` 和 `SERVER_PORT` 进行配置。
 
 访问API文档: http://localhost:8501/docs
-        

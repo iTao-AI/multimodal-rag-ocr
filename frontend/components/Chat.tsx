@@ -12,6 +12,7 @@ interface Message {
   content: string;
   timestamp: string;
   sources?: SourceDocument[];
+  qualityReport?: DocumentQualityReport;
   isStreaming?: boolean;
 }
 
@@ -22,6 +23,23 @@ interface SourceDocument {
   retrieval_score?: number;
   rerank_score?: number;
   metadata: Record<string, any>;
+}
+
+interface DocumentQualityIssue {
+  code: string;
+  severity: string;
+  message: string;
+}
+
+interface DocumentQualityReport {
+  status: 'passed' | 'rejected';
+  document_count: number;
+  source_count: number;
+  max_score: number;
+  avg_score: number;
+  score_threshold: number;
+  min_confidence_threshold: number;
+  issues: DocumentQualityIssue[];
 }
 
 interface KnowledgeBase {
@@ -239,6 +257,7 @@ export function Chat({}: ChatProps) {
 
       let accumulatedContent = '';
       let sources: SourceDocument[] | undefined;
+      let qualityReport: DocumentQualityReport | undefined;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -262,6 +281,15 @@ export function Chat({}: ChatProps) {
               );
             } else if (data.type === 'sources') {
               sources = data.data;
+            } else if (data.type === 'quality_report') {
+              qualityReport = data.data;
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === assistantMessage.id
+                    ? { ...msg, qualityReport }
+                    : msg
+                )
+              );
             } else if (data.type === 'metadata') {
               console.log('对话元数据:', data.data);
             } else if (data.type === 'error') {
@@ -277,7 +305,7 @@ export function Chat({}: ChatProps) {
       setMessages(prev =>
         prev.map(msg =>
           msg.id === assistantMessage.id
-            ? { ...msg, isStreaming: false, sources }
+            ? { ...msg, isStreaming: false, sources, qualityReport }
             : msg
         )
       );
@@ -508,6 +536,16 @@ export function Chat({}: ChatProps) {
                             >
                               {msg.content}
                             </ReactMarkdown>
+                            {msg.qualityReport && (
+                              <div className={`mt-3 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs ${
+                                msg.qualityReport.status === 'passed'
+                                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                  : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                              }`}>
+                                <span>质量门禁: {msg.qualityReport.status}</span>
+                                <span>max {msg.qualityReport.max_score.toFixed(3)}</span>
+                              </div>
+                            )}
                             {msg.isStreaming && <span className="inline-block w-2 h-5 bg-primary ml-1 animate-pulse" />}
                           </div>
                         </motion.div>

@@ -96,6 +96,17 @@ class SourceDocument(BaseModel):
     retrieval_score: Optional[float] = None  # 原始召回分数
     rerank_score: Optional[float] = None  # 重排序分数
     metadata: Dict[str, Any] = {}
+
+class DocumentQualityReport(BaseModel):
+    """检索文档质量报告，用于判断是否足够支撑回答。"""
+    status: str = Field(..., description="质量状态: passed/rejected")
+    document_count: int = Field(..., description="参与判断的文档数量")
+    source_count: int = Field(..., description="不同来源文件数量")
+    max_score: float = Field(..., description="最高相关度分数")
+    avg_score: float = Field(..., description="平均相关度分数")
+    score_threshold: float = Field(..., description="召回过滤阈值")
+    min_confidence_threshold: float = Field(..., description="回答门禁阈值")
+    issues: List[Dict[str, str]] = Field(default_factory=list, description="质量问题列表")
     
 class ChatRequest(BaseModel):
     """对话请求"""
@@ -106,6 +117,12 @@ class ChatRequest(BaseModel):
     # 召回配置
     top_k: int = Field(10, ge=1, le=50, description="召回文档数量")
     score_threshold: float = Field(0.5, ge=0.0, le=1.0, description="相似度阈值")
+    min_confidence_threshold: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="回答门禁阈值；不传时复用 score_threshold"
+    )
     
     # 重排序配置
     use_reranker: bool = Field(False, description="是否使用重排序")
@@ -126,6 +143,7 @@ class ChatResponse(BaseModel):
     message: str
     answer: str
     sources: Optional[List[SourceDocument]] = None
+    quality_report: Optional[DocumentQualityReport] = None
     metadata: Dict[str, Any] = {}
 
 # ============ 对话服务 ============
@@ -148,6 +166,86 @@ class ChatService:
 用户问题：{query}
 
 请基于以上信息给出准确、详细的回答。如果信息不足以回答问题，请如实说明。"""
+        self.low_confidence_answer = (
+            "当前知识库没有足够可靠依据回答该问题。请补充更相关的文档，"
+            "或降低置信门禁后重新检索。"
+        )
+
+    def _effective_min_confidence_threshold(self, request: ChatRequest) -> float:
+        if request.min_confidence_threshold is not None:
+            return request.min_confidence_threshold
+        return request.score_threshold
+
+    def build_quality_report(
+        self,
+        documents: List[Dict[str, Any]],
+        *,
+        score_threshold: float,
+        min_confidence_threshold: float,
+    ) -> DocumentQualityReport:
+        """Build a deterministic quality report before deciding to call the LLM."""
+        scores = [float(doc.get("score") or 0.0) for doc in documents]
+        max_score = max(scores) if scores else 0.0
+        avg_score = sum(scores) / len(scores) if scores else 0.0
+        source_count = len({
+            str(doc.get("filename") or "")
+            for doc in documents
+            if doc.get("filename")
+        })
+        issues: List[Dict[str, str]] = []
+
+        if not documents:
+            issues.append({
+                "code": "no_retrieved_documents",
+                "severity": "error",
+                "message": "No retrieved documents are available to ground the answer.",
+            })
+        elif max_score < min_confidence_threshold:
+            issues.append({
+                "code": "low_max_score",
+                "severity": "error",
+                "message": "Retrieved documents do not meet the answer confidence threshold.",
+            })
+
+        return DocumentQualityReport(
+            status="rejected" if issues else "passed",
+            document_count=len(documents),
+            source_count=source_count,
+            max_score=max_score,
+            avg_score=avg_score,
+            score_threshold=score_threshold,
+            min_confidence_threshold=min_confidence_threshold,
+            issues=issues,
+        )
+
+    def _source_documents(self, documents: List[Dict[str, Any]]) -> List[SourceDocument]:
+        sources = []
+        for doc in documents:
+            sources.append(
+                SourceDocument(
+                    chunk_text=doc["chunk_text"],
+                    filename=doc["filename"],
+                    score=doc["score"],
+                    retrieval_score=doc.get("retrieval_score"),
+                    rerank_score=doc.get("rerank_score"),
+                    metadata=doc.get("metadata", {}),
+                )
+            )
+        return sources
+
+    def _quality_report_from_cache(
+        self,
+        cached: Dict[str, Any],
+        request: ChatRequest,
+    ) -> DocumentQualityReport:
+        cached_report = cached.get("quality_report")
+        if cached_report:
+            return DocumentQualityReport(**cached_report)
+        return self.build_quality_report(
+            cached.get("sources", []) or [],
+            score_threshold=request.score_threshold,
+            min_confidence_threshold=self._effective_min_confidence_threshold(request),
+        )
 
     async def retrieve_documents(
         self, 
@@ -565,6 +663,30 @@ class ChatService:
                 logger.info("缓存命中: %s...", request.query[:50])
                 answer = cached["answer"]
                 sources_data = cached.get("sources", [])
+                quality_report = self._quality_report_from_cache(cached, request)
+
+                if quality_report.status == "rejected":
+                    logger.warning("缓存结果置信度不足，拒绝返回缓存答案")
+                    yield json.dumps({
+                        "type": "quality_report",
+                        "data": quality_report.model_dump()
+                    }, ensure_ascii=False) + "\n"
+                    for char in self.low_confidence_answer:
+                        yield json.dumps({"type": "content", "data": char}, ensure_ascii=False) + "\n"
+                    if request.return_source and sources_data:
+                        yield json.dumps({"type": "sources", "data": sources_data}, ensure_ascii=False) + "\n"
+                    yield json.dumps({
+                        "type": "metadata",
+                        "data": {
+                            "retrieve_time": 0,
+                            "rerank_time": 0,
+                            "llm_time": 0,
+                            "total_time": time.time() - start_time,
+                            "documents_count": len(sources_data),
+                            "cache_hit": True
+                        }
+                    }, ensure_ascii=False) + "\n"
+                    return
 
                 # 流式输出缓存结果
                 for char in answer:
@@ -572,6 +694,11 @@ class ChatService:
 
                 if request.return_source and sources_data:
                     yield json.dumps({"type": "sources", "data": sources_data}, ensure_ascii=False) + "\n"
+
+                yield json.dumps({
+                    "type": "quality_report",
+                    "data": quality_report.model_dump()
+                }, ensure_ascii=False) + "\n"
 
                 yield json.dumps({
                     "type": "metadata",
@@ -621,37 +748,29 @@ class ChatService:
             documents = all_documents[:HYBRID_TOP_K]
 
             if not documents:
-                # 没有找到相关文档，直接用LLM回答
-                logger.warning("未找到相关文档，使用LLM直接回答")
-                messages = []
-                
-                # 添加历史对话
-                for msg in request.history:
-                    messages.append({
-                        "role": msg.role,
-                        "content": msg.content
-                    })
-                
-                # 添加当前问题
-                messages.append({
-                    "role": "user",
-                    "content": request.query
-                })
-                
-                # 流式返回
-                async for token in self.call_llm_stream(messages, request.llm_config):
-                    yield json.dumps({
-                        "type": "content",
-                        "data": token
-                    }, ensure_ascii=False) + "\n"
-                
-                # 返回元数据
+                quality_report = self.build_quality_report(
+                    documents,
+                    score_threshold=request.score_threshold,
+                    min_confidence_threshold=self._effective_min_confidence_threshold(request),
+                )
+                logger.warning("未找到可靠相关文档，拒绝无依据回答")
+                yield json.dumps({
+                    "type": "quality_report",
+                    "data": quality_report.model_dump()
+                }, ensure_ascii=False) + "\n"
+                for char in self.low_confidence_answer:
+                    yield json.dumps({"type": "content", "data": char}, ensure_ascii=False) + "\n"
                 yield json.dumps({
                     "type": "metadata",
                     "data": {
                         "retrieve_time": retrieve_time,
+                        "rewrite_time": rewrite_time,
+                        "rerank_time": 0,
+                        "hybrid_time": 0,
+                        "llm_time": 0,
                         "total_time": time.time() - start_time,
-                        "documents_count": 0
+                        "documents_count": 0,
+                        "cache_hit": False
                     }
                 }, ensure_ascii=False) + "\n"
                 return
@@ -682,6 +801,43 @@ class ChatService:
                 )
                 hybrid_time = time.time() - hybrid_start
                 logger.info("BM25 混合检索耗时: %.2f秒", hybrid_time)
+
+            quality_report = self.build_quality_report(
+                documents,
+                score_threshold=request.score_threshold,
+                min_confidence_threshold=self._effective_min_confidence_threshold(request),
+            )
+            if quality_report.status == "rejected":
+                logger.warning(
+                    "检索结果置信度不足，拒绝调用LLM: max_score=%.3f threshold=%.3f",
+                    quality_report.max_score,
+                    quality_report.min_confidence_threshold,
+                )
+                yield json.dumps({
+                    "type": "quality_report",
+                    "data": quality_report.model_dump()
+                }, ensure_ascii=False) + "\n"
+                for char in self.low_confidence_answer:
+                    yield json.dumps({"type": "content", "data": char}, ensure_ascii=False) + "\n"
+                if request.return_source and documents:
+                    yield json.dumps({
+                        "type": "sources",
+                        "data": [s.model_dump() for s in self._source_documents(documents)]
+                    }, ensure_ascii=False) + "\n"
+                yield json.dumps({
+                    "type": "metadata",
+                    "data": {
+                        "retrieve_time": retrieve_time,
+                        "rewrite_time": rewrite_time,
+                        "rerank_time": rerank_time,
+                        "hybrid_time": hybrid_time,
+                        "llm_time": 0,
+                        "total_time": time.time() - start_time,
+                        "documents_count": len(documents),
+                        "cache_hit": False
+                    }
+                }, ensure_ascii=False) + "\n"
+                return
 
             # 3. 构建上下文
             context = self.format_context(documents)
@@ -722,29 +878,30 @@ class ChatService:
             answer_text = "".join(full_answer)
             
             # 7. 发送来源文档
+            sources = []
             if request.return_source and documents:
-                sources = []
-                for doc in documents:
-                    sources.append({
-                        "chunk_text": doc["chunk_text"],
-                        "filename": doc["filename"],
-                        "score": doc["score"],
-                        "retrieval_score": doc.get("retrieval_score"),
-                        "rerank_score": doc.get("rerank_score"),
-                        "metadata": doc.get("metadata", {})
-                    })
+                sources = [s.model_dump() for s in self._source_documents(documents)]
                 
                 yield json.dumps({
                     "type": "sources",
                     "data": sources
                 }, ensure_ascii=False) + "\n"
 
+            yield json.dumps({
+                "type": "quality_report",
+                "data": quality_report.model_dump()
+            }, ensure_ascii=False) + "\n"
+
             # 7.5 写入缓存
             try:
                 cache.set_query_result(
                     request.collection_name,
                     request.query,
-                    {"answer": answer_text, "sources": sources if request.return_source and documents else []},
+                    {
+                        "answer": answer_text,
+                        "sources": sources if request.return_source and documents else [],
+                        "quality_report": quality_report.model_dump(),
+                    },
                 )
             except Exception as e:
                 logger.warning("缓存写入失败: %s", str(e))
@@ -807,11 +964,33 @@ class ChatService:
             cached = cache.get_query_result(request.collection_name, request.query)
             if cached:
                 logger.info("缓存命中: %s...", request.query[:50])
+                quality_report = self._quality_report_from_cache(cached, request)
+                sources = [SourceDocument(**s) for s in cached.get("sources", [])] if cached.get("sources") else None
+                if quality_report.status == "rejected":
+                    logger.warning("缓存结果置信度不足，拒绝返回缓存答案")
+                    return ChatResponse(
+                        success=True,
+                        message="拒答（缓存检索置信度不足）",
+                        answer=self.low_confidence_answer,
+                        sources=sources,
+                        quality_report=quality_report,
+                        metadata={
+                            "retrieve_time": 0,
+                            "rewrite_time": 0,
+                            "rerank_time": 0,
+                            "hybrid_time": 0,
+                            "llm_time": 0,
+                            "total_time": time.time() - start_time,
+                            "documents_count": len(cached.get("sources", [])),
+                            "cache_hit": True
+                        }
+                    )
                 return ChatResponse(
                     success=True,
                     message="对话完成（缓存）",
                     answer=cached["answer"],
-                    sources=[SourceDocument(**s) for s in cached.get("sources", [])] if cached.get("sources") else None,
+                    sources=sources,
+                    quality_report=quality_report,
                     metadata={
                         "retrieve_time": 0,
                         "rewrite_time": 0,
@@ -859,32 +1038,27 @@ class ChatService:
             documents = all_documents[:HYBRID_TOP_K]
 
             if not documents:
-                # 没有找到相关文档，直接用LLM回答
-                logger.warning("未找到相关文档，使用LLM直接回答")
-                messages = []
-                
-                for msg in request.history:
-                    messages.append({
-                        "role": msg.role,
-                        "content": msg.content
-                    })
-                
-                messages.append({
-                    "role": "user",
-                    "content": request.query
-                })
-                
-                answer = await self.call_llm_non_stream(messages, request.llm_config)
-                
+                quality_report = self.build_quality_report(
+                    documents,
+                    score_threshold=request.score_threshold,
+                    min_confidence_threshold=self._effective_min_confidence_threshold(request),
+                )
+                logger.warning("未找到可靠相关文档，拒绝无依据回答")
                 return ChatResponse(
                     success=True,
-                    message="对话完成（未找到相关文档）",
-                    answer=answer,
+                    message="拒答（检索置信度不足）",
+                    answer=self.low_confidence_answer,
                     sources=None,
+                    quality_report=quality_report,
                     metadata={
                         "retrieve_time": retrieve_time,
+                        "rewrite_time": rewrite_time,
+                        "rerank_time": 0,
+                        "hybrid_time": 0,
+                        "llm_time": 0,
                         "total_time": time.time() - start_time,
-                        "documents_count": 0
+                        "documents_count": 0,
+                        "cache_hit": False
                     }
                 )
             
@@ -913,6 +1087,36 @@ class ChatService:
                 )
                 hybrid_time = time.time() - hybrid_start
                 logger.info("BM25 混合检索耗时: %.2f秒", hybrid_time)
+
+            quality_report = self.build_quality_report(
+                documents,
+                score_threshold=request.score_threshold,
+                min_confidence_threshold=self._effective_min_confidence_threshold(request),
+            )
+            if quality_report.status == "rejected":
+                sources = self._source_documents(documents) if request.return_source else None
+                logger.warning(
+                    "检索结果置信度不足，拒绝调用LLM: max_score=%.3f threshold=%.3f",
+                    quality_report.max_score,
+                    quality_report.min_confidence_threshold,
+                )
+                return ChatResponse(
+                    success=True,
+                    message="拒答（检索置信度不足）",
+                    answer=self.low_confidence_answer,
+                    sources=sources,
+                    quality_report=quality_report,
+                    metadata={
+                        "retrieve_time": retrieve_time,
+                        "rewrite_time": rewrite_time,
+                        "rerank_time": rerank_time,
+                        "hybrid_time": hybrid_time,
+                        "llm_time": 0,
+                        "total_time": time.time() - start_time,
+                        "documents_count": len(documents),
+                        "cache_hit": False
+                    }
+                )
 
             # 3. 构建上下文
             context = self.format_context(documents)
@@ -944,17 +1148,7 @@ class ChatService:
             # 7. 构建来源文档
             sources = None
             if request.return_source:
-                sources = []
-                for doc in documents:
-                    source_doc = SourceDocument(
-                        chunk_text=doc["chunk_text"],
-                        filename=doc["filename"],
-                        score=doc["score"],  # 主分数
-                        retrieval_score=doc.get("retrieval_score"),  # 原始召回分数
-                        rerank_score=doc.get("rerank_score"),  # 重排序分数
-                        metadata=doc.get("metadata", {})
-                    )
-                    sources.append(source_doc)
+                sources = self._source_documents(documents)
             
             # 8. 写入缓存
             try:
@@ -963,7 +1157,8 @@ class ChatService:
                     request.query,
                     {
                         "answer": answer,
-                        "sources": [s.model_dump() for s in sources] if sources else []
+                        "sources": [s.model_dump() for s in sources] if sources else [],
+                        "quality_report": quality_report.model_dump(),
                     },
                 )
             except Exception as e:
@@ -988,6 +1183,7 @@ class ChatService:
                 message="对话完成",
                 answer=answer,
                 sources=sources,
+                quality_report=quality_report,
                 metadata={
                     "retrieve_time": retrieve_time,
                     "rewrite_time": rewrite_time,
