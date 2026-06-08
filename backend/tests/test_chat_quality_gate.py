@@ -70,7 +70,7 @@ async def test_non_stream_rejects_when_no_documents(monkeypatch):
     response = await service.chat_non_stream(_request())
 
     assert response.success is True
-    assert "没有足够可靠依据" in response.answer
+    assert response.answer == service.low_confidence_answer
     assert response.sources is None
     assert response.quality_report.status == "rejected"
     assert response.quality_report.issues[0]["code"] == "no_retrieved_documents"
@@ -106,11 +106,54 @@ async def test_non_stream_rejects_low_confidence_cached_answer(monkeypatch, stab
     response = await service.chat_non_stream(_request())
 
     assert response.answer != "Stale cached answer"
-    assert "没有足够可靠依据" in response.answer
+    assert response.answer == service.low_confidence_answer
     assert response.quality_report.status == "rejected"
     assert response.quality_report.issues[0]["code"] == "low_max_score"
     assert response.metadata["cache_hit"] is True
     assert response.metadata["llm_time"] == 0
+
+
+@pytest.mark.asyncio
+async def test_non_stream_rechecks_cached_quality_report_with_current_threshold(
+    monkeypatch,
+    stable_chat_config,
+):
+    from chat.kb_chat import ChatService
+
+    stable_chat_config.cached = {
+        "answer": "Cached answer created with a loose threshold",
+        "sources": [
+            {
+                "chunk_text": "Cached policy fragment",
+                "filename": "policy.pdf",
+                "score": 0.42,
+                "metadata": {"page_start": 1},
+            }
+        ],
+        "quality_report": {
+            "status": "passed",
+            "document_count": 1,
+            "source_count": 1,
+            "max_score": 0.42,
+            "avg_score": 0.42,
+            "score_threshold": 0.2,
+            "min_confidence_threshold": 0.3,
+            "issues": [],
+        },
+    }
+    service = ChatService()
+
+    async def fail_llm(*args, **kwargs):
+        raise AssertionError("LLM should not be called for stricter cached thresholds")
+
+    monkeypatch.setattr(service, "call_llm_non_stream", fail_llm)
+
+    response = await service.chat_non_stream(_request(min_confidence_threshold=0.8))
+
+    assert response.answer != "Cached answer created with a loose threshold"
+    assert response.quality_report.status == "rejected"
+    assert response.quality_report.min_confidence_threshold == 0.8
+    assert response.metadata["answer_status"] == "rejected"
 
 
 @pytest.mark.asyncio
@@ -139,7 +182,7 @@ async def test_non_stream_rejects_low_confidence_documents(monkeypatch):
 
     response = await service.chat_non_stream(_request())
 
-    assert "没有足够可靠依据" in response.answer
+    assert response.answer == service.low_confidence_answer
     assert response.sources is not None
     assert response.quality_report.status == "rejected"
     assert response.quality_report.max_score == 0.42
@@ -148,7 +191,33 @@ async def test_non_stream_rejects_low_confidence_documents(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_non_stream_allows_high_confidence_documents(monkeypatch):
+async def test_non_stream_rejects_malformed_low_confidence_documents(monkeypatch):
+    from chat.kb_chat import ChatService
+
+    service = ChatService()
+
+    async def malformed_documents(**kwargs):
+        return [{"score": "N/A"}]
+
+    monkeypatch.setattr(service, "retrieve_documents", malformed_documents)
+
+    async def fail_llm(*args, **kwargs):
+        raise AssertionError("LLM should not be called for malformed low-confidence docs")
+
+    monkeypatch.setattr(service, "call_llm_non_stream", fail_llm)
+
+    response = await service.chat_non_stream(_request(return_source=True))
+
+    assert response.quality_report.status == "rejected"
+    assert response.quality_report.max_score == 0.0
+    assert response.sources[0].chunk_text == ""
+    assert response.sources[0].filename == ""
+    assert response.sources[0].score == 0.0
+    assert response.metadata["answer_status"] == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_non_stream_allows_high_confidence_documents(monkeypatch, stable_chat_config):
     from chat.kb_chat import ChatService
 
     service = ChatService()
@@ -180,6 +249,8 @@ async def test_non_stream_allows_high_confidence_documents(monkeypatch):
     assert response.answer == "Grounded answer"
     assert response.quality_report.status == "passed"
     assert response.quality_report.issues == []
+    assert stable_chat_config.saved["quality_sources"][0]["score"] == 0.88
+    assert stable_chat_config.saved["quality_report"]["status"] == "passed"
 
 
 @pytest.mark.asyncio

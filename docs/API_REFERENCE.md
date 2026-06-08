@@ -413,11 +413,12 @@
   },
   "total_tokens": 1234,
   "latency_ms": 567,
-  "cache_hit": false
+  "cache_hit": false,
+  "answer_status": "answered"
 }
 ```
 
-当 `quality_report.status` 为 `rejected` 时，对话服务返回拒答文本并跳过 LLM 调用；常见原因包括未召回文档或最高分低于 `min_confidence_threshold`。
+当 `quality_report.status` 为 `rejected` 时，对话服务返回拒答文本并跳过 LLM 调用；常见原因包括未召回文档或最高分低于 `min_confidence_threshold`。`metadata.answer_status` 会同步标记为 `rejected`，正常回答则为 `answered`。
 
 ### 5.2 POST /chat/stream
 
@@ -433,7 +434,7 @@
 {"type": "content", "data": "一个分支..."}
 {"type": "sources", "data": [{"chunk_text": "...", "filename": "AI入门.pdf", "score": 0.92}]}
 {"type": "quality_report", "data": {"status": "passed", "document_count": 5, "max_score": 0.92, "min_confidence_threshold": 0.5, "issues": []}}
-{"type": "metadata", "data": {"rewrite_time": 0.5, "retrieve_time": 1.2, "rerank_time": 0.0, "hybrid_time": 0.1, "llm_time": 2.3, "total_time": 4.1, "documents_count": 5, "cache_hit": false}}
+{"type": "metadata", "data": {"rewrite_time": 0.5, "retrieve_time": 1.2, "rerank_time": 0.0, "hybrid_time": 0.1, "llm_time": 2.3, "total_time": 4.1, "documents_count": 5, "cache_hit": false, "answer_status": "answered"}}
 ```
 
 出错时:

@@ -176,6 +176,38 @@ class ChatService:
             return request.min_confidence_threshold
         return request.score_threshold
 
+    def _score_value(self, value: Any) -> float:
+        if value is None:
+            return 0.0
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _safe_query_for_log(self, query: str) -> str:
+        return query.replace("\r", " ").replace("\n", " ")[:50]
+
+    def _quality_issues(
+        self,
+        *,
+        document_count: int,
+        max_score: float,
+        min_confidence_threshold: float,
+    ) -> List[Dict[str, str]]:
+        if document_count == 0:
+            return [{
+                "code": "no_retrieved_documents",
+                "severity": "error",
+                "message": "No retrieved documents are available to ground the answer.",
+            }]
+        if max_score < min_confidence_threshold:
+            return [{
+                "code": "low_max_score",
+                "severity": "error",
+                "message": "Retrieved documents do not meet the answer confidence threshold.",
+            }]
+        return []
+
     def build_quality_report(
         self,
         documents: List[Dict[str, Any]],
@@ -184,7 +216,7 @@ class ChatService:
         min_confidence_threshold: float,
     ) -> DocumentQualityReport:
         """Build a deterministic quality report before deciding to call the LLM."""
-        scores = [float(doc.get("score") or 0.0) for doc in documents]
+        scores = [self._score_value(doc.get("score")) for doc in documents]
         max_score = max(scores) if scores else 0.0
         avg_score = sum(scores) / len(scores) if scores else 0.0
         source_count = len({
@@ -192,20 +224,11 @@ class ChatService:
             for doc in documents
             if doc.get("filename")
         })
-        issues: List[Dict[str, str]] = []
-
-        if not documents:
-            issues.append({
-                "code": "no_retrieved_documents",
-                "severity": "error",
-                "message": "No retrieved documents are available to ground the answer.",
-            })
-        elif max_score < min_confidence_threshold:
-            issues.append({
-                "code": "low_max_score",
-                "severity": "error",
-                "message": "Retrieved documents do not meet the answer confidence threshold.",
-            })
+        issues = self._quality_issues(
+            document_count=len(documents),
+            max_score=max_score,
+            min_confidence_threshold=min_confidence_threshold,
+        )
 
         return DocumentQualityReport(
             status="rejected" if issues else "passed",
@@ -223,26 +246,62 @@ class ChatService:
         for doc in documents:
             sources.append(
                 SourceDocument(
-                    chunk_text=doc["chunk_text"],
-                    filename=doc["filename"],
-                    score=doc["score"],
-                    retrieval_score=doc.get("retrieval_score"),
-                    rerank_score=doc.get("rerank_score"),
-                    metadata=doc.get("metadata", {}),
+                    chunk_text=str(doc.get("chunk_text") or ""),
+                    filename=str(doc.get("filename") or ""),
+                    score=self._score_value(doc.get("score")),
+                    retrieval_score=(
+                        self._score_value(doc.get("retrieval_score"))
+                        if doc.get("retrieval_score") is not None else None
+                    ),
+                    rerank_score=(
+                        self._score_value(doc.get("rerank_score"))
+                        if doc.get("rerank_score") is not None else None
+                    ),
+                    metadata=doc.get("metadata") if isinstance(doc.get("metadata"), dict) else {},
                 )
             )
         return sources
+
+    def _quality_report_from_cached_report(
+        self,
+        cached_report: Dict[str, Any],
+        request: ChatRequest,
+    ) -> DocumentQualityReport:
+        report = DocumentQualityReport(**cached_report)
+        min_confidence_threshold = self._effective_min_confidence_threshold(request)
+        issues = self._quality_issues(
+            document_count=report.document_count,
+            max_score=report.max_score,
+            min_confidence_threshold=min_confidence_threshold,
+        )
+        return DocumentQualityReport(
+            status="rejected" if issues else "passed",
+            document_count=report.document_count,
+            source_count=report.source_count,
+            max_score=report.max_score,
+            avg_score=report.avg_score,
+            score_threshold=request.score_threshold,
+            min_confidence_threshold=min_confidence_threshold,
+            issues=issues,
+        )
 
     def _quality_report_from_cache(
         self,
         cached: Dict[str, Any],
         request: ChatRequest,
     ) -> DocumentQualityReport:
+        quality_sources = cached.get("quality_sources") or cached.get("sources") or []
+        if quality_sources:
+            return self.build_quality_report(
+                quality_sources,
+                score_threshold=request.score_threshold,
+                min_confidence_threshold=self._effective_min_confidence_threshold(request),
+            )
         cached_report = cached.get("quality_report")
         if cached_report:
-            return DocumentQualityReport(**cached_report)
+            return self._quality_report_from_cached_report(cached_report, request)
         return self.build_quality_report(
-            cached.get("sources", []) or [],
+            [],
             score_threshold=request.score_threshold,
             min_confidence_threshold=self._effective_min_confidence_threshold(request),
         )
@@ -660,7 +719,7 @@ class ChatService:
             cache = get_cache_manager()
             cached = cache.get_query_result(request.collection_name, request.query)
             if cached:
-                logger.info("缓存命中: %s...", request.query[:50])
+                logger.info("缓存命中: %s...", self._safe_query_for_log(request.query))
                 answer = cached["answer"]
                 sources_data = cached.get("sources", [])
                 quality_report = self._quality_report_from_cache(cached, request)
@@ -679,11 +738,14 @@ class ChatService:
                         "type": "metadata",
                         "data": {
                             "retrieve_time": 0,
+                            "rewrite_time": 0,
                             "rerank_time": 0,
+                            "hybrid_time": 0,
                             "llm_time": 0,
                             "total_time": time.time() - start_time,
                             "documents_count": len(sources_data),
-                            "cache_hit": True
+                            "cache_hit": True,
+                            "answer_status": "rejected"
                         }
                     }, ensure_ascii=False) + "\n"
                     return
@@ -704,11 +766,14 @@ class ChatService:
                     "type": "metadata",
                     "data": {
                         "retrieve_time": 0,
+                        "rewrite_time": 0,
                         "rerank_time": 0,
+                        "hybrid_time": 0,
                         "llm_time": 0,
                         "total_time": time.time() - start_time,
                         "documents_count": len(sources_data),
-                        "cache_hit": True
+                        "cache_hit": True,
+                        "answer_status": "answered"
                     }
                 }, ensure_ascii=False) + "\n"
                 return
@@ -770,7 +835,8 @@ class ChatService:
                         "llm_time": 0,
                         "total_time": time.time() - start_time,
                         "documents_count": 0,
-                        "cache_hit": False
+                        "cache_hit": False,
+                        "answer_status": "rejected"
                     }
                 }, ensure_ascii=False) + "\n"
                 return
@@ -834,7 +900,8 @@ class ChatService:
                         "llm_time": 0,
                         "total_time": time.time() - start_time,
                         "documents_count": len(documents),
-                        "cache_hit": False
+                        "cache_hit": False,
+                        "answer_status": "rejected"
                     }
                 }, ensure_ascii=False) + "\n"
                 return
@@ -878,9 +945,10 @@ class ChatService:
             answer_text = "".join(full_answer)
             
             # 7. 发送来源文档
+            quality_sources = [s.model_dump() for s in self._source_documents(documents)]
             sources = []
             if request.return_source and documents:
-                sources = [s.model_dump() for s in self._source_documents(documents)]
+                sources = quality_sources
                 
                 yield json.dumps({
                     "type": "sources",
@@ -900,6 +968,7 @@ class ChatService:
                     {
                         "answer": answer_text,
                         "sources": sources if request.return_source and documents else [],
+                        "quality_sources": quality_sources,
                         "quality_report": quality_report.model_dump(),
                     },
                 )
@@ -918,7 +987,8 @@ class ChatService:
                     "llm_time": llm_time,
                     "total_time": total_time,
                     "documents_count": len(documents),
-                    "cache_hit": False
+                    "cache_hit": False,
+                    "answer_status": "answered"
                 }
             }, ensure_ascii=False) + "\n"
 
@@ -963,9 +1033,9 @@ class ChatService:
             cache = get_cache_manager()
             cached = cache.get_query_result(request.collection_name, request.query)
             if cached:
-                logger.info("缓存命中: %s...", request.query[:50])
+                logger.info("缓存命中: %s...", self._safe_query_for_log(request.query))
                 quality_report = self._quality_report_from_cache(cached, request)
-                sources = [SourceDocument(**s) for s in cached.get("sources", [])] if cached.get("sources") else None
+                sources = self._source_documents(cached.get("sources", [])) if cached.get("sources") else None
                 if quality_report.status == "rejected":
                     logger.warning("缓存结果置信度不足，拒绝返回缓存答案")
                     return ChatResponse(
@@ -982,7 +1052,8 @@ class ChatService:
                             "llm_time": 0,
                             "total_time": time.time() - start_time,
                             "documents_count": len(cached.get("sources", [])),
-                            "cache_hit": True
+                            "cache_hit": True,
+                            "answer_status": "rejected"
                         }
                     )
                 return ChatResponse(
@@ -999,7 +1070,8 @@ class ChatService:
                         "llm_time": 0,
                         "total_time": time.time() - start_time,
                         "documents_count": len(cached.get("sources", [])),
-                        "cache_hit": True
+                        "cache_hit": True,
+                        "answer_status": "answered"
                     }
                 )
 
@@ -1058,7 +1130,8 @@ class ChatService:
                         "llm_time": 0,
                         "total_time": time.time() - start_time,
                         "documents_count": 0,
-                        "cache_hit": False
+                        "cache_hit": False,
+                        "answer_status": "rejected"
                     }
                 )
             
@@ -1114,7 +1187,8 @@ class ChatService:
                         "llm_time": 0,
                         "total_time": time.time() - start_time,
                         "documents_count": len(documents),
-                        "cache_hit": False
+                        "cache_hit": False,
+                        "answer_status": "rejected"
                     }
                 )
 
@@ -1146,9 +1220,10 @@ class ChatService:
             llm_time = time.time() - llm_start
             
             # 7. 构建来源文档
+            quality_sources = self._source_documents(documents)
             sources = None
             if request.return_source:
-                sources = self._source_documents(documents)
+                sources = quality_sources
             
             # 8. 写入缓存
             try:
@@ -1158,6 +1233,7 @@ class ChatService:
                     {
                         "answer": answer,
                         "sources": [s.model_dump() for s in sources] if sources else [],
+                        "quality_sources": [s.model_dump() for s in quality_sources],
                         "quality_report": quality_report.model_dump(),
                     },
                 )
@@ -1192,7 +1268,8 @@ class ChatService:
                     "llm_time": llm_time,
                     "total_time": total_time,
                     "documents_count": len(documents),
-                    "cache_hit": False
+                    "cache_hit": False,
+                    "answer_status": "answered"
                 }
             )
             

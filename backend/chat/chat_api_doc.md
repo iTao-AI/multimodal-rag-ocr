@@ -136,7 +136,8 @@ RAG对话接口，支持流式和非流式两种模式。
     "rerank_time": 0.2,
     "llm_time": 1.2,
     "total_time": 1.9,
-    "documents_count": 5
+    "documents_count": 5,
+    "answer_status": "answered"
   }
 }
 ```
@@ -151,7 +152,7 @@ RAG对话接口，支持流式和非流式两种模式。
 - 元数据: `{"type": "metadata", "data": {...}}`
 - 错误信息: `{"type": "error", "data": {...}}`
 
-当 `quality_report.status` 为 `rejected` 时，服务返回固定拒答文本并跳过 LLM 调用；常见原因包括未召回文档或最高分低于 `min_confidence_threshold`。
+当 `quality_report.status` 为 `rejected` 时，服务返回固定拒答文本并跳过 LLM 调用；常见原因包括未召回文档或最高分低于 `min_confidence_threshold`。`metadata.answer_status` 会同步标记为 `rejected`，正常回答则为 `answered`。
 
 ## 使用示例
 
