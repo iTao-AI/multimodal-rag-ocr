@@ -20,10 +20,16 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'motion-vendor': ['motion'],
-          'ui-vendor': ['lucide-react', 'sonner'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'react-vendor';
+          }
+          if (id.includes('node_modules/motion')) {
+            return 'motion-vendor';
+          }
+          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/sonner')) {
+            return 'ui-vendor';
+          }
         },
       },
     },
