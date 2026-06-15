@@ -12,7 +12,7 @@ pandas>=2.0.0
 pymilvus==2.6.2
 scipy>=1.13.0
 protobuf>=5.27.2
-langchain==0.3.27
+langchain==0.3.30
 langchain-text-splitters==0.3.11
 # langchain-chatchat==0.3.1.3  # 依赖冲突，暂时禁用
 pypinyin==0.55.0
