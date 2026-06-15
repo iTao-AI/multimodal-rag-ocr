@@ -1,6 +1,6 @@
 pymupdf4llm==0.0.27
 pdf2image==1.17.0 
-aiohttp==3.13.0
+aiohttp==3.14.0
 openai==2.3.0
 fastapi==0.119.0
 uvicorn==0.37.0
