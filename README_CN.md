@@ -6,6 +6,10 @@
 > **Legacy 项目：**当前主维护版本为
 > [multimodal-knowledge-engine](https://github.com/iTao-AI/multimodal-knowledge-engine)。
 > 本仓库仅保留为早期 RAG/OCR 实现与架构学习记录，不建议用于生产部署。
+>
+> 项目从 PDF 解析逐步扩展到 OCR、文本切分、向量存储、混合检索和问答服务。
+> 随着能力持续增加，原有服务边界和依赖结构逐渐难以继续演进，因此后续开发转向
+> 重新设计的 `multimodal-knowledge-engine`。
 
 一个支持 PDF 文档解析、OCR 提取、向量存储和 AI 问答的知识库系统。支持轻量级 PDF 提取（V1.0）和企业级 OCR 管道（V2.0，MinerU / PaddleOCR-VL / DeepSeek-OCR）。
 

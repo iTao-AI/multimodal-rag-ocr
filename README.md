@@ -7,6 +7,11 @@
 > [multimodal-knowledge-engine](https://github.com/iTao-AI/multimodal-knowledge-engine).
 > This repository is retained as an early RAG/OCR implementation and architecture-learning record.
 > It is not recommended for production deployment.
+>
+> The project grew incrementally from PDF extraction into OCR, text chunking, vector storage,
+> hybrid retrieval, and Q&A services. As those capabilities accumulated, the original service
+> boundaries and dependency structure became harder to evolve, so continued development moved
+> to a clean redesign in `multimodal-knowledge-engine`.
 
 A knowledge base system with PDF document ingestion, OCR extraction, vector storage, and AI-powered Q&A. Supports both lightweight PDF extraction (V1.0) and enterprise-grade OCR pipelines (V2.0 with MinerU / PaddleOCR-VL / DeepSeek-OCR).
 
