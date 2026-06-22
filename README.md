@@ -2,6 +2,12 @@
 
 # Multimodal RAG OCR
 
+> [!IMPORTANT]
+> **Legacy project:** Active development has moved to
+> [multimodal-knowledge-engine](https://github.com/iTao-AI/multimodal-knowledge-engine).
+> This repository is retained as an early RAG/OCR implementation and architecture-learning record.
+> It is not recommended for production deployment.
+
 A knowledge base system with PDF document ingestion, OCR extraction, vector storage, and AI-powered Q&A. Supports both lightweight PDF extraction (V1.0) and enterprise-grade OCR pipelines (V2.0 with MinerU / PaddleOCR-VL / DeepSeek-OCR).
 
 ## Features
